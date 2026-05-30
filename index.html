@@ -72,6 +72,11 @@ textarea{resize:vertical;min-height:60px}
 .drug-table td{border-bottom:1px solid var(--border);padding:4px}
 .drug-table input{border:none;background:transparent;font-size:12px;width:100%;padding:2px}
 .drug-table input:focus{background:#fffbe6;outline:none}
+.drug-select{border:none;background:transparent;font-size:12px;width:100%;padding:2px;color:var(--text);font-family:var(--font);cursor:pointer;-webkit-appearance:none}
+.drug-select:focus{background:#fffbe6;outline:none}
+.otra-input{display:none;border:none;border-top:1px dashed var(--border);background:#fffbe6;font-size:11px;width:100%;padding:3px 2px;margin-top:2px;font-family:var(--font);font-style:italic}
+.otra-input.visible{display:block}
+.otra-input:focus{outline:none;background:#fff9d6}
 .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .add-row-btn{display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:var(--teal-light);color:var(--teal);border:1.5px solid var(--teal);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
 .add-row-btn:hover{background:var(--teal);color:#fff}
@@ -177,11 +182,13 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
         <div class="field full"><label>Procedimiento 2°</label><input type="text" id="proc2"></div>
       </div>
       <div class="row">
-        <div class="field half"><label>Cirujano</label><input type="text" id="cirujano"></div>
-        <div class="field half"><label>Ayudante</label><input type="text" id="ayudante"></div>
+        <div class="field full"><label>Cirujan@</label><input type="text" id="cirujano"></div>
       </div>
       <div class="row">
-        <div class="field full"><label>Anestesiólogo/s</label><input type="text" id="anestesiologo"></div>
+        <div class="field full"><label>Anestesiolog@</label><input type="text" id="anestesiologo"></div>
+      </div>
+      <div class="row">
+        <div class="field full"><label>Ayudante</label><input type="text" id="ayudante"></div>
       </div>
     </div>
   </div>
@@ -201,14 +208,8 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
         </div>
       </div>
       <div class="row">
-        <div class="field third"><label>Edad</label><input type="text" id="edad" placeholder="ej: 3 años"></div>
-        <div class="field third"><label>Peso (kg)</label><input type="number" id="peso" step="0.1"></div>
-        <div class="field third"><label>Agresivo</label>
-          <div class="radio-group">
-            <label><input type="radio" name="agresivo" value="SI"><span>SI</span></label>
-            <label><input type="radio" name="agresivo" value="NO"><span>NO</span></label>
-          </div>
-        </div>
+        <div class="field half"><label>Edad</label><input type="text" id="edad" placeholder="ej: 3 años"></div>
+        <div class="field half"><label>Peso (kg)</label><input type="number" id="peso" step="0.1"></div>
       </div>
     </div>
   </div>
@@ -217,9 +218,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <div class="section-title">Revisación Preanestésica</div>
     <div class="section-body">
       <div class="row">
-        <div class="field third"><label>Ayuno S (hs)</label><input type="text" id="ayuno_s"></div>
-        <div class="field third"><label>Ayuno L (hs)</label><input type="text" id="ayuno_l"></div>
-        <div class="field third"><label>Score Corporal</label>
+        <div class="field full"><label>Score Corporal</label>
           <div class="score-group" id="score-group">
             <button class="score-btn" onclick="setScore(1,this)">1</button>
             <button class="score-btn" onclick="setScore(2,this)">2</button>
@@ -324,21 +323,9 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <div class="section-body">
       <div class="tbl-wrap">
         <table class="drug-table"><thead><tr><th>Droga</th><th>Dosis</th><th>Vía</th><th>Hora</th><th></th></tr></thead>
-        <tbody id="mpa-body">
-          <tr><td><input type="text" placeholder="Droga"></td><td><input type="text" placeholder="mg/kg"></td><td><input type="text" placeholder="IM/IV"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
-        </tbody></table>
+        <tbody id="mpa-body"></tbody></table>
       </div>
       <button class="add-row-btn" onclick="addDrugRow('mpa-body')">+ Agregar</button>
-      <hr class="div">
-      <div class="field full"><label>Efecto MPA</label>
-        <div class="radio-group">
-          <label><input type="radio" name="efecto_mpa" value="Leve"><span>Leve</span></label>
-          <label><input type="radio" name="efecto_mpa" value="Moderado"><span>Moderado</span></label>
-          <label><input type="radio" name="efecto_mpa" value="Severo"><span>Severo</span></label>
-          <label><input type="radio" name="efecto_mpa" value="Nulo"><span>Nulo</span></label>
-          <label><input type="radio" name="efecto_mpa" value="Excitación"><span>Excitación</span></label>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -347,9 +334,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <div class="section-body">
       <div class="tbl-wrap">
         <table class="drug-table"><thead><tr><th>Droga</th><th>Dosis</th><th>Vía</th><th>Hora</th><th></th></tr></thead>
-        <tbody id="ind-body">
-          <tr><td><input type="text" placeholder="Droga"></td><td><input type="text" placeholder="mg/kg"></td><td><input type="text" placeholder="IV/IM"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
-        </tbody></table>
+        <tbody id="ind-body"></tbody></table>
       </div>
       <button class="add-row-btn" onclick="addDrugRow('ind-body')">+ Agregar</button>
     </div>
@@ -376,7 +361,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
   </div>
 
   <div class="section">
-    <div class="section-title">Anestesia Loco-Regional</div>
+    <div class="section-title">Anestesia Regional</div>
     <div class="section-body">
       <div class="row">
         <div class="field full"><label>Tipo de bloqueo</label>
@@ -385,6 +370,9 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
             <label><input type="checkbox" id="blq_epidural" value="Epidural"><span>Epidural</span></label>
             <label><input type="checkbox" id="blq_espinal" value="Espinal"><span>Espinal</span></label>
             <label><input type="checkbox" id="blq_neuro" value="Neurolocalización"><span>Neurolocalización</span></label>
+            <label><input type="checkbox" id="blq_perineural" value="Perineural"><span>Perineural</span></label>
+            <label><input type="checkbox" id="blq_interfacial" value="Interfacial"><span>Interfacial</span></label>
+            <label><input type="checkbox" id="blq_ecoguiado" value="Eco guiado"><span>Eco guiado</span></label>
             <label><input type="checkbox" id="blq_ninguno" value="Ninguno"><span>Sin bloqueo regional</span></label>
           </div>
         </div>
@@ -395,9 +383,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
       </div>
       <div class="tbl-wrap">
         <table class="drug-table"><thead><tr><th>Droga</th><th>Cc</th><th>Vol. Adm.</th><th>Hora</th><th></th></tr></thead>
-        <tbody id="loc-body">
-          <tr><td><input type="text" placeholder="Droga"></td><td><input type="text"></td><td><input type="text" placeholder="mL"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
-        </tbody></table>
+        <tbody id="loc-body"></tbody></table>
       </div>
       <button class="add-row-btn" onclick="addDrugRow('loc-body')">+ Agregar</button>
     </div>
@@ -448,9 +434,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <div class="section-body">
       <div class="tbl-wrap">
         <table class="drug-table"><thead><tr><th>Droga</th><th>Dosis</th><th>Vía</th><th>Hora</th><th></th></tr></thead>
-        <tbody id="intraop-body">
-          <tr><td><input type="text" placeholder="Droga"></td><td><input type="text"></td><td><input type="text"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
-        </tbody></table>
+        <tbody id="intraop-body"></tbody></table>
       </div>
       <button class="add-row-btn" onclick="addDrugRow('intraop-body')">+ Agregar</button>
     </div>
@@ -690,13 +674,58 @@ function buildMonitorTable() {
 }
 buildMonitorTable();
 
-// ---- DRUG ROWS ----
-function addDrugRow(tbodyId) {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `<td><input type="text" placeholder="Droga"></td><td><input type="text" placeholder="mg/kg"></td><td><input type="text" placeholder="Vía"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td>`;
-  document.getElementById(tbodyId).appendChild(tr);
+// ---- LISTAS DE DROGAS ----
+const DROGAS = {
+  'mpa-body': ['Acepromacina','Buprenorfina','Butorfanol','Dexmedetomidina','Fentanilo','Ketamina','Medetomidina','Meloxicam','Remifentanilo','Robenacoxib'],
+  'ind-body': ['Etomidato','Isofluorano','Ketamina','Midazolam','Propofol','Sevofluorano','Tiopental'],
+  'loc-body': ['Bupivacaína','Dexmedetomidina','Lidocaína','Medetomidina','Ropivacaína','Triamcinolona'],
+  'intraop-body': ['Amiodarona','Dobutamina','Dopamina','Fentanilo','Isoproterenol','Ketamina','Labetalol','Lidocaína','Noradrenalina','Remifentanilo'],
+};
+
+function drugSelectHTML(tbodyId) {
+  const lista = DROGAS[tbodyId] || [];
+  let opts = `<option value="">— Seleccionar —</option>`;
+  lista.forEach(d => opts += `<option value="${d}">${d}</option>`);
+  opts += `<option value="__otra__">✏️ Otra...</option>`;
+  return `<select class="drug-select" onchange="toggleOtra(this)">${opts}</select>
+          <input type="text" class="otra-input" placeholder="Escribir nombre...">`;
 }
+
+function toggleOtra(sel) {
+  const inp = sel.nextElementSibling;
+  if (sel.value === '__otra__') {
+    inp.classList.add('visible');
+    inp.focus();
+  } else {
+    inp.classList.remove('visible');
+    inp.value = '';
+  }
+}
+
+function getDrugValue(cell) {
+  const sel = cell.querySelector('.drug-select');
+  const inp = cell.querySelector('.otra-input');
+  if (!sel) return cell.querySelector('input')?.value || '';
+  return sel.value === '__otra__' ? (inp.value || 'Otra') : sel.value;
+}
+
+function addDrugRow(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  const isLoc = tbodyId === 'loc-body';
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${drugSelectHTML(tbodyId)}</td>
+    <td><input type="text" placeholder="mg/kg"></td>
+    ${isLoc ? `<td><input type="text" placeholder="mL"></td>` : `<td><input type="text" placeholder="Vía"></td>`}
+    <td><input type="time"></td>
+    <td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td>`;
+  tbody.appendChild(tr);
+}
+
 function removeRow(btn) { btn.closest('tr').remove(); }
+
+// Inicializar con una fila cada tabla
+['mpa-body','ind-body','loc-body','intraop-body'].forEach(id => addDrugRow(id));
 
 // ---- COMPLICACIONES ----
 function ningunaCheck() {
@@ -735,7 +764,7 @@ function recopilarDatos() {
   ].forEach(id => { const el = document.getElementById(id); if(el) d[id] = el.value; });
 
   // radios
-  ['agresivo','est_mental','riesgo','anest_prev','efecto_mpa','conciencia'].forEach(name => {
+  ['est_mental','riesgo','anest_prev','conciencia'].forEach(name => {
     const el = document.querySelector(`input[name="${name}"]:checked`);
     d[name] = el ? el.value : '';
   });
@@ -745,10 +774,30 @@ function recopilarDatos() {
 
   // bloqueos
   const blqs = [];
-  ['blq_local','blq_epidural','blq_espinal','blq_neuro','blq_ninguno'].forEach(id => {
+  ['blq_local','blq_epidural','blq_espinal','blq_neuro','blq_perineural','blq_interfacial','blq_ecoguiado','blq_ninguno'].forEach(id => {
     if(document.getElementById(id)?.checked) blqs.push(document.getElementById(id).value);
   });
   d['bloqueo_regional'] = blqs.join(', ') || 'Sin datos';
+
+  // tablas de drogas con desplegable
+  function leerTablaDrogas(tbodyId) {
+    const rows = [];
+    document.querySelectorAll(`#${tbodyId} tr`).forEach(tr => {
+      const celdas = tr.querySelectorAll('td');
+      if (!celdas.length) return;
+      const droga = getDrugValue(celdas[0]);
+      const resto = Array.from(celdas).slice(1, -1).map(td => {
+        const inp = td.querySelector('input');
+        return inp ? inp.value : '';
+      });
+      if (droga) rows.push([droga, ...resto].join(' | '));
+    });
+    return rows.join(' // ');
+  }
+  d['drogas_mpa']      = leerTablaDrogas('mpa-body');
+  d['drogas_induccion']= leerTablaDrogas('ind-body');
+  d['drogas_regional'] = leerTablaDrogas('loc-body');
+  d['drogas_intraop']  = leerTablaDrogas('intraop-body');
 
   // complicaciones
   const complicaciones = [];
