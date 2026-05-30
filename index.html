@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3a5c">
+<title>Anestesia Vet – FCV UBA</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --navy:#1a3a5c; --navy-light:#234e7a; --teal:#0d7a6e; --teal-light:#e6f4f2;
+  --accent:#e8a020; --red:#c0392b; --bg:#f4f6f8; --white:#fff;
+  --border:#c8d3dd; --text:#1c2b3a; --muted:#5a6e80; --input-bg:#f9fbfc;
+  --shadow:0 2px 8px rgba(26,58,92,.10); --r:10px;
+  --font:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;padding-bottom:80px}
+
+/* HEADER */
+.app-header{background:var(--navy);color:#fff;padding:12px 16px 8px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.app-header h1{font-size:15px;font-weight:600}
+.app-header p{font-size:11px;opacity:.7;margin-top:1px;font-family:var(--mono)}
+
+/* TABS */
+.tabs{display:flex;background:var(--navy-light);border-bottom:2px solid var(--teal);overflow-x:auto}
+.tab{flex:0 0 auto;padding:10px 14px;text-align:center;font-size:11px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;border:none;background:none;transition:all .2s;white-space:nowrap}
+.tab.active{color:#fff;background:rgba(13,122,110,.35);border-bottom:2px solid var(--accent);margin-bottom:-2px}
+
+/* PAGE */
+.page{display:none;padding:12px 12px 0}
+.page.active{display:block}
+
+/* SECTION */
+.section{background:var(--white);border-radius:var(--r);margin-bottom:12px;box-shadow:var(--shadow);overflow:hidden}
+.section-title{background:var(--navy);color:#fff;padding:8px 14px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase}
+.section-title.teal{background:var(--teal)}
+.section-title.red{background:var(--red)}
+.section-body{padding:12px}
+
+/* FORM */
+.row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;flex:1;min-width:120px}
+.field.full{min-width:100%}
+.field.half{min-width:calc(50% - 4px);max-width:calc(50% - 4px)}
+.field.third{min-width:calc(33% - 6px)}
+label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
+input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+  border:1.5px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;
+  font-family:var(--font);background:var(--input-bg);color:var(--text);width:100%;
+  transition:border-color .15s,box-shadow .15s;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(13,122,110,.12);background:#fff}
+textarea{resize:vertical;min-height:60px}
+
+/* RADIO/CHECK PILLS */
+.radio-group,.check-group{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.radio-group label,.check-group label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;color:var(--text);text-transform:none;letter-spacing:0;background:var(--input-bg);border:1.5px solid var(--border);border-radius:20px;padding:5px 10px;cursor:pointer;transition:all .15s}
+.radio-group input,.check-group input{display:none}
+.radio-group label:has(input:checked),.check-group label:has(input:checked){background:var(--teal-light);border-color:var(--teal);color:var(--teal);font-weight:600}
+
+/* ASA / SCORE */
+.asa-group,.score-group{display:flex;gap:5px;flex-wrap:wrap}
+.asa-btn,.score-btn{width:40px;height:40px;border-radius:8px;border:2px solid var(--border);background:var(--input-bg);font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.asa-btn.active,.score-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.score-btn.active{background:var(--accent);border-color:var(--accent)}
+
+/* DRUG TABLE */
+.drug-table{width:100%;border-collapse:collapse;font-size:12px}
+.drug-table th{background:var(--navy-light);color:#fff;padding:6px 8px;text-align:left;font-size:11px}
+.drug-table td{border-bottom:1px solid var(--border);padding:4px}
+.drug-table input{border:none;background:transparent;font-size:12px;width:100%;padding:2px}
+.drug-table input:focus{background:#fffbe6;outline:none}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.add-row-btn{display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:var(--teal-light);color:var(--teal);border:1.5px solid var(--teal);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.add-row-btn:hover{background:var(--teal);color:#fff}
+
+/* MONITOR TABLE */
+.monitor-table{border-collapse:collapse;width:100%;min-width:560px;font-size:11px;font-family:var(--mono)}
+.monitor-table th{background:var(--navy);color:#fff;padding:5px 4px;text-align:center;font-weight:600;font-size:10px;white-space:nowrap}
+.monitor-table th.pcol{background:var(--navy-light);text-align:left;padding-left:8px;min-width:95px}
+.monitor-table td{border:1px solid var(--border);padding:2px;text-align:center}
+.monitor-table td.plabel{background:#eef2f6;font-size:10px;font-weight:600;text-align:left;padding:4px 8px;color:var(--navy);white-space:nowrap}
+.monitor-table input{border:none;background:transparent;width:100%;text-align:center;font-size:11px;font-family:var(--mono);padding:3px 2px;color:var(--text)}
+.monitor-table input:focus{background:#fffbe6;outline:none}
+.monitor-table tr:nth-child(even) td{background:#f7f9fb}
+.monitor-table tr:nth-child(even) td.plabel{background:#e8edf2}
+.hg1{background:var(--teal)!important}
+.hg2{background:#0a5c52!important}
+.hg3{background:var(--navy-light)!important}
+
+/* HORA ROW */
+.hora-row{display:flex;gap:8px;align-items:center;background:var(--teal-light);border-radius:8px;padding:8px 10px;margin-bottom:8px;border:1px solid #b2ddd9}
+.hora-row label{color:var(--teal);font-weight:600;margin:0;white-space:nowrap;font-size:11px}
+.hora-row input{background:#fff;max-width:110px}
+
+/* COMPLICACIONES */
+.compl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.compl-item{display:flex;align-items:center;gap:6px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px;transition:all .15s}
+.compl-item input{display:none}
+.compl-item:has(input:checked){background:#fdecea;border-color:var(--red);color:var(--red);font-weight:600}
+.compl-dot{width:10px;height:10px;border-radius:50%;background:var(--border);flex-shrink:0;transition:background .15s}
+.compl-item:has(input:checked) .compl-dot{background:var(--red)}
+
+/* CHARTS */
+.chart-card{background:#fff;border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.chart-card h3{font-size:12px;font-weight:600;color:var(--navy);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+.chart-wrap{position:relative;height:200px}
+
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+.stat-card{background:#fff;border-radius:var(--r);padding:14px;box-shadow:var(--shadow);border-left:4px solid var(--teal)}
+.stat-card.red{border-left-color:var(--red)}
+.stat-card.accent{border-left-color:var(--accent)}
+.stat-card.navy{border-left-color:var(--navy)}
+.stat-num{font-size:28px;font-weight:700;color:var(--navy);font-family:var(--mono)}
+.stat-label{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* FICHAS LIST */
+.ficha-item{background:#fff;border-radius:8px;padding:12px;margin-bottom:8px;box-shadow:var(--shadow);border-left:4px solid var(--teal);cursor:pointer;transition:all .15s}
+.ficha-item:hover{border-left-color:var(--accent)}
+.ficha-item h4{font-size:13px;font-weight:600;color:var(--navy)}
+.ficha-item p{font-size:11px;color:var(--muted);margin-top:2px}
+.ficha-badge{display:inline-block;background:var(--teal-light);color:var(--teal);border-radius:12px;padding:2px 8px;font-size:10px;font-weight:600;margin-top:4px}
+.ficha-badge.red{background:#fdecea;color:var(--red)}
+
+/* BOTTOM BAR */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid var(--border);padding:10px 12px;display:flex;gap:8px;box-shadow:0 -4px 16px rgba(0,0,0,.08);z-index:200}
+.btn{flex:1;padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--font)}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-secondary{background:var(--navy);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--teal);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1}
+.toast.error{background:var(--red)}
+
+/* SPINNER */
+.spinner{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* DIVIDER */
+hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>🩺 Ficha de Anestesia Veterinaria</h1>
+  <p>Servicio de Anestesiología y Algiología · FCV UBA</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active"  onclick="showTab('frente',this)">① Preanestesia</button>
+  <button class="tab" onclick="showTab('monitoreo',this)">② Monitoreo</button>
+  <button class="tab" onclick="showTab('recuperacion',this)">③ Recuperación</button>
+  <button class="tab" onclick="showTab('graficos',this)">📈 Gráficos</button>
+  <button class="tab" onclick="showTab('estadisticas',this)">📊 Estadísticas</button>
+</div>
+
+<!-- ========== TAB 1: PREANESTESIA ========== -->
+<div id="tab-frente" class="page active">
+
+  <div class="section">
+    <div class="section-title">Datos Generales</div>
+    <div class="section-body">
+      <div class="row">
+        <div class="field half"><label>Fecha</label><input type="date" id="fecha"></div>
+        <div class="field half"><label>Historia Clínica N°</label><input type="text" id="hc" placeholder="HC-0000"></div>
+      </div>
+      <div class="row">
+        <div class="field full"><label>Procedimiento 1°</label><input type="text" id="proc1"></div>
+      </div>
+      <div class="row">
+        <div class="field full"><label>Procedimiento 2°</label><input type="text" id="proc2"></div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>Cirujano</label><input type="text" id="cirujano"></div>
+        <div class="field half"><label>Ayudante</label><input type="text" id="ayudante"></div>
+      </div>
+      <div class="row">
+        <div class="field full"><label>Anestesiólogo/s</label><input type="text" id="anestesiologo"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title teal">Datos del Paciente</div>
+    <div class="section-body">
+      <div class="row">
+        <div class="field half"><label>Propietario</label><input type="text" id="propietario"></div>
+        <div class="field half"><label>Nombre del Paciente</label><input type="text" id="nombre_pac"></div>
+      </div>
+      <div class="row">
+        <div class="field third"><label>Especie</label><input type="text" id="especie" placeholder="Canino/Felino"></div>
+        <div class="field third"><label>Raza</label><input type="text" id="raza"></div>
+        <div class="field third"><label>Sexo</label>
+          <select id="sexo"><option value="">—</option><option>Macho entero</option><option>Macho castrado</option><option>Hembra entera</option><option>Hembra castrada</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field third"><label>Edad</label><input type="text" id="edad" placeholder="ej: 3 años"></div>
+        <div class="field third"><label>Peso (kg)</label><input type="number" id="peso" step="0.1"></div>
+        <div class="field third"><label>Agresivo</label>
+          <div class="radio-group">
+            <label><input type="radio" name="agresivo" value="SI"><span>SI</span></label>
+            <label><input type="radio" name="agresivo" value="NO"><span>NO</span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Revisación Preanestésica</div>
+    <div class="section-body">
+      <div class="row">
+        <div class="field third"><label>Ayuno S (hs)</label><input type="text" id="ayuno_s"></div>
+        <div class="field third"><label>Ayuno L (hs)</label><input type="text" id="ayuno_l"></div>
+        <div class="field third"><label>Score Corporal</label>
+          <div class="score-group" id="score-group">
+            <button class="score-btn" onclick="setScore(1,this)">1</button>
+            <button class="score-btn" onclick="setScore(2,this)">2</button>
+            <button class="score-btn" onclick="setScore(3,this)">3</button>
+            <button class="score-btn" onclick="setScore(4,this)">4</button>
+            <button class="score-btn" onclick="setScore(5,this)">5</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field third"><label>FC (lpm)</label><input type="number" id="fc_pre"></div>
+        <div class="field third"><label>FR (rpm)</label><input type="number" id="fr_pre"></div>
+        <div class="field third"><label>Pulso</label><input type="text" id="pulso_pre" placeholder="Fuerte/Débil"></div>
+      </div>
+      <div class="row">
+        <div class="field third"><label>SpO₂ (%)</label><input type="number" id="spo2_pre"></div>
+        <div class="field third"><label>Temp (°C)</label><input type="number" id="temp_pre" step="0.1"></div>
+        <div class="field third"><label>PR</label><input type="text" id="pr_pre"></div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>MM</label><input type="text" id="mm_pre" placeholder="Rosadas/Pálidas"></div>
+        <div class="field half"><label>TLLC (seg)</label><input type="text" id="tllc_pre"></div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>%DHT</label><input type="text" id="dht"></div>
+        <div class="field half"><label>PAS/PAD/PAM</label><input type="text" id="pa_pre" placeholder="—/—/—"></div>
+      </div>
+      <div class="row">
+        <div class="field full"><label>Estado Mental</label>
+          <div class="radio-group">
+            <label><input type="radio" name="est_mental" value="Alerta"><span>Alerta</span></label>
+            <label><input type="radio" name="est_mental" value="Deprimido"><span>Deprimido</span></label>
+            <label><input type="radio" name="est_mental" value="Excitado"><span>Excitado</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>ASA</label>
+          <div class="asa-group" id="asa-group">
+            <button class="asa-btn" onclick="setASA('I',this)">I</button>
+            <button class="asa-btn" onclick="setASA('II',this)">II</button>
+            <button class="asa-btn" onclick="setASA('III',this)">III</button>
+            <button class="asa-btn" onclick="setASA('IV',this)">IV</button>
+            <button class="asa-btn" onclick="setASA('V',this)">V</button>
+            <button class="asa-btn" onclick="setASA('E',this)">E</button>
+          </div>
+        </div>
+        <div class="field half"><label>Riesgo Anestésico</label>
+          <div class="radio-group">
+            <label><input type="radio" name="riesgo" value="Leve"><span>Leve</span></label>
+            <label><input type="radio" name="riesgo" value="Moderado"><span>Moderado</span></label>
+            <label><input type="radio" name="riesgo" value="Severo"><span>Severo</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>Anestesias previas</label>
+          <div class="radio-group">
+            <label><input type="radio" name="anest_prev" value="SI"><span>SI</span></label>
+            <label><input type="radio" name="anest_prev" value="NO"><span>NO</span></label>
+          </div>
+        </div>
+        <div class="field half"><label>Complicaciones previas</label><input type="text" id="compl_prev"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Estudios Complementarios</div>
+    <div class="section-body">
+      <div class="row">
+        <div class="field third"><label>Hto (%)</label><input type="number" id="hto" step="0.1"></div>
+        <div class="field third"><label>GR</label><input type="text" id="gr"></div>
+        <div class="field third"><label>GB</label><input type="text" id="gb"></div>
+      </div>
+      <div class="row">
+        <div class="field third"><label>Plaq</label><input type="text" id="plaq"></div>
+        <div class="field third"><label>Urea</label><input type="number" id="urea"></div>
+        <div class="field third"><label>Creatinina</label><input type="number" id="cr" step="0.01"></div>
+      </div>
+      <div class="row">
+        <div class="field third"><label>PT</label><input type="number" id="pt" step="0.1"></div>
+        <div class="field third"><label>Alb</label><input type="number" id="alb" step="0.1"></div>
+        <div class="field third"><label>Glucosa</label><input type="number" id="glu"></div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>Radiografía</label><input type="text" id="radio_estudio"></div>
+        <div class="field half"><label>Ecografía</label><input type="text" id="eco"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Patologías Preexistentes / Tratamientos</div>
+    <div class="section-body">
+      <textarea id="patologias" placeholder="Describir patologías y medicaciones actuales..."></textarea>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title teal">Medicación Preanestésica (MPA)</div>
+    <div class="section-body">
+      <div class="tbl-wrap">
+        <table class="drug-table"><thead><tr><th>Droga</th><th>Dosis</th><th>Vía</th><th>Hora</th><th></th></tr></thead>
+        <tbody id="mpa-body">
+          <tr><td><input type="text" placeholder="Droga"></td><td><input type="text" placeholder="mg/kg"></td><td><input type="text" placeholder="IM/IV"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
+        </tbody></table>
+      </div>
+      <button class="add-row-btn" onclick="addDrugRow('mpa-body')">+ Agregar</button>
+      <hr class="div">
+      <div class="field full"><label>Efecto MPA</label>
+        <div class="radio-group">
+          <label><input type="radio" name="efecto_mpa" value="Leve"><span>Leve</span></label>
+          <label><input type="radio" name="efecto_mpa" value="Moderado"><span>Moderado</span></label>
+          <label><input type="radio" name="efecto_mpa" value="Severo"><span>Severo</span></label>
+          <label><input type="radio" name="efecto_mpa" value="Nulo"><span>Nulo</span></label>
+          <label><input type="radio" name="efecto_mpa" value="Excitación"><span>Excitación</span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title teal">Inducción</div>
+    <div class="section-body">
+      <div class="tbl-wrap">
+        <table class="drug-table"><thead><tr><th>Droga</th><th>Dosis</th><th>Vía</th><th>Hora</th><th></th></tr></thead>
+        <tbody id="ind-body">
+          <tr><td><input type="text" placeholder="Droga"></td><td><input type="text" placeholder="mg/kg"></td><td><input type="text" placeholder="IV/IM"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
+        </tbody></table>
+      </div>
+      <button class="add-row-btn" onclick="addDrugRow('ind-body')">+ Agregar</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Mantenimiento</div>
+    <div class="section-body">
+      <div class="row">
+        <div class="field full"><label>Tipo</label>
+          <div class="check-group">
+            <label><input type="checkbox" id="tipo_tiva"><span>TIVA</span></label>
+            <label><input type="checkbox" id="tipo_inh"><span>Inhalatoria</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>Circuito</label>
+          <select id="circuito"><option value="">—</option><option>Circular</option><option>Lineal</option><option>Vaivén</option></select>
+        </div>
+        <div class="field half"><label>Máscara / Tubo N°</label><input type="text" id="tubo"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Anestesia Loco-Regional</div>
+    <div class="section-body">
+      <div class="row">
+        <div class="field full"><label>Tipo de bloqueo</label>
+          <div class="check-group">
+            <label><input type="checkbox" id="blq_local" value="Local"><span>Local</span></label>
+            <label><input type="checkbox" id="blq_epidural" value="Epidural"><span>Epidural</span></label>
+            <label><input type="checkbox" id="blq_espinal" value="Espinal"><span>Espinal</span></label>
+            <label><input type="checkbox" id="blq_neuro" value="Neurolocalización"><span>Neurolocalización</span></label>
+            <label><input type="checkbox" id="blq_ninguno" value="Ninguno"><span>Sin bloqueo regional</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>Abordaje</label><input type="text" id="abordaje_loc"></div>
+        <div class="field half"><label>LOC</label><input type="text" id="loc"></div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="drug-table"><thead><tr><th>Droga</th><th>Cc</th><th>Vol. Adm.</th><th>Hora</th><th></th></tr></thead>
+        <tbody id="loc-body">
+          <tr><td><input type="text" placeholder="Droga"></td><td><input type="text"></td><td><input type="text" placeholder="mL"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
+        </tbody></table>
+      </div>
+      <button class="add-row-btn" onclick="addDrugRow('loc-body')">+ Agregar</button>
+    </div>
+  </div>
+
+</div><!-- /frente -->
+
+<!-- ========== TAB 2: MONITOREO ========== -->
+<div id="tab-monitoreo" class="page">
+
+  <div class="section">
+    <div class="section-title teal">Horas de Referencia</div>
+    <div class="section-body">
+      <div class="hora-row"><label>Inicio Anest.</label><input type="time" id="h_inicio_anest"></div>
+      <div class="hora-row"><label>Inicio Cirugía</label><input type="time" id="h_inicio_cx"></div>
+      <div class="hora-row"><label>Fin Cirugía</label><input type="time" id="h_fin_cx"></div>
+      <div class="hora-row"><label>Fin Anestesia</label><input type="time" id="h_fin_anest"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Parámetros de Monitoreo (cada 15 min)</div>
+    <div class="section-body" style="padding:8px 4px">
+      <div class="tbl-wrap">
+        <table class="monitor-table">
+          <thead>
+            <tr>
+              <th class="pcol">Parámetro</th>
+              <th class="hg1" colspan="4">Hora 1</th>
+              <th class="hg2" colspan="4">Hora 2</th>
+              <th class="hg3" colspan="3">Hora 3</th>
+            </tr>
+            <tr>
+              <th class="pcol">min →</th>
+              <th>0</th><th>15</th><th>30</th><th>45</th>
+              <th>0</th><th>15</th><th>30</th><th>45</th>
+              <th>0</th><th>15</th><th>30</th>
+            </tr>
+          </thead>
+          <tbody id="monitor-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title teal">Drogas Intraoperatorias</div>
+    <div class="section-body">
+      <div class="tbl-wrap">
+        <table class="drug-table"><thead><tr><th>Droga</th><th>Dosis</th><th>Vía</th><th>Hora</th><th></th></tr></thead>
+        <tbody id="intraop-body">
+          <tr><td><input type="text" placeholder="Droga"></td><td><input type="text"></td><td><input type="text"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
+        </tbody></table>
+      </div>
+      <button class="add-row-btn" onclick="addDrugRow('intraop-body')">+ Agregar</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Fluidos</div>
+    <div class="section-body">
+      <div class="tbl-wrap">
+        <table class="drug-table"><thead><tr><th>Fluido</th><th>Velocidad</th><th>Vol. Total</th><th>Hora</th><th></th></tr></thead>
+        <tbody id="fluidos-body">
+          <tr><td><input type="text" placeholder="Tipo"></td><td><input type="text" placeholder="mL/kg/h"></td><td><input type="text" placeholder="mL"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
+        </tbody></table>
+      </div>
+      <button class="add-row-btn" onclick="addDrugRow('fluidos-body')">+ Agregar</button>
+    </div>
+  </div>
+
+</div><!-- /monitoreo -->
+
+<!-- ========== TAB 3: RECUPERACIÓN ========== -->
+<div id="tab-recuperacion" class="page">
+
+  <div class="section">
+    <div class="section-title teal">Recuperación</div>
+    <div class="section-body">
+      <div class="hora-row"><label>Hora extubación</label><input type="time" id="h_extubacion"></div>
+      <div class="row">
+        <div class="field full"><label>Antagonistas</label><input type="text" id="antagonistas" placeholder="Droga / Dosis / Vía"></div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>Hora antagonista</label><input type="time" id="h_antagonista"></div>
+      </div>
+      <hr class="div">
+      <div class="row">
+        <div class="field third"><label>FC</label><input type="number" id="fc_rec"></div>
+        <div class="field third"><label>FR</label><input type="number" id="fr_rec"></div>
+        <div class="field third"><label>SpO₂ (%)</label><input type="number" id="spo2_rec"></div>
+      </div>
+      <div class="row">
+        <div class="field third"><label>TLLC</label><input type="text" id="tllc_rec"></div>
+        <div class="field third"><label>MM</label><input type="text" id="mm_rec"></div>
+        <div class="field third"><label>Temp (°C)</label><input type="number" id="temp_rec" step="0.1"></div>
+      </div>
+      <div class="row">
+        <div class="field third"><label>Pulso</label><input type="text" id="pulso_rec"></div>
+        <div class="field third"><label>PA</label><input type="text" id="pa_rec" placeholder="—/—/—"></div>
+        <div class="field third"><label>PVC</label><input type="text" id="pvc_rec"></div>
+      </div>
+      <div class="row">
+        <div class="field half"><label>Decúbito</label><input type="text" id="decubito_rec"></div>
+        <div class="field half"><label>Estado Conciencia</label>
+          <div class="radio-group">
+            <label><input type="radio" name="conciencia" value="Alerta"><span>Alerta</span></label>
+            <label><input type="radio" name="conciencia" value="Deprimido"><span>Deprimido</span></label>
+            <label><input type="radio" name="conciencia" value="Excitado"><span>Excitado</span></label>
+          </div>
+        </div>
+      </div>
+      <hr class="div">
+      <div class="row">
+        <div class="field third"><label>Escala de dolor</label><input type="text" id="escala_dolor"></div>
+        <div class="field third"><label>Hora</label><input type="time" id="h_dolor"></div>
+        <div class="field third"><label>Puntaje</label><input type="number" id="puntaje_dolor" min="0" max="20"></div>
+      </div>
+      <div class="row">
+        <div class="field full"><label>Rescate Analgésico</label><textarea id="rescate_analg" placeholder="Droga / Dosis / Vía / Hora"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title red">Complicaciones Anestésicas</div>
+    <div class="section-body">
+      <div class="compl-grid">
+        <label class="compl-item"><input type="checkbox" id="c_ninguna" onchange="ningunaCheck()"><div class="compl-dot"></div><span>Ninguna</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_arritmia"><div class="compl-dot"></div><span>Arritmias</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_intub"><div class="compl-dot"></div><span>Intubación dificultosa</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_taquicardia"><div class="compl-dot"></div><span>Taquicardia</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_vomito"><div class="compl-dot"></div><span>Vómitos</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_bradicardia"><div class="compl-dot"></div><span>Bradicardia</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_hipertermia"><div class="compl-dot"></div><span>Hipertermia</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_hipotermia"><div class="compl-dot"></div><span>Hipotermia</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_htn"><div class="compl-dot"></div><span>Hipertensión</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_hipercapnia"><div class="compl-dot"></div><span>Hipercapnia</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_hipotension"><div class="compl-dot"></div><span>Hipotensión</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_desat"><div class="compl-dot"></div><span>Desaturación</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_muerte"><div class="compl-dot"></div><span>Muerte</span></label>
+        <label class="compl-item"><input type="checkbox" id="c_eutanasia"><div class="compl-dot"></div><span>Eutanasia</span></label>
+        <label class="compl-item" style="grid-column:span 2"><input type="checkbox" id="c_otros"><div class="compl-dot"></div><span>Otros</span></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Comentarios Anestésicos</div>
+    <div class="section-body"><textarea id="comentarios" style="min-height:90px"></textarea></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title teal">Indicaciones Postanestésicas</div>
+    <div class="section-body"><textarea id="indicaciones_post" style="min-height:90px"></textarea></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Destino Postanestésico</div>
+    <div class="section-body"><textarea id="destino_post" style="min-height:50px" placeholder="UCI / Internación / Alta..."></textarea></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Firma del Anestesiólogo</div>
+    <div class="section-body">
+      <div class="row">
+        <div class="field half"><label>Nombre</label><input type="text" id="firma_nombre"></div>
+        <div class="field half"><label>Fecha y Hora</label><input type="datetime-local" id="firma_fecha"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /recuperacion -->
+
+<!-- ========== TAB 4: GRÁFICOS ========== -->
+<div id="tab-graficos" class="page">
+  <div style="background:var(--teal-light);border:1px solid #b2ddd9;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--teal)">
+    📈 Los gráficos se actualizan automáticamente mientras cargás los datos en la pestaña de Monitoreo.
+  </div>
+  <div class="chart-card"><h3>Frecuencia Cardíaca (FC)</h3><div class="chart-wrap"><canvas id="chart-fc"></canvas></div></div>
+  <div class="chart-card"><h3>Frecuencia Respiratoria (FR)</h3><div class="chart-wrap"><canvas id="chart-fr"></canvas></div></div>
+  <div class="chart-card"><h3>SpO₂ (%)</h3><div class="chart-wrap"><canvas id="chart-spo2"></canvas></div></div>
+  <div class="chart-card"><h3>ETCO₂</h3><div class="chart-wrap"><canvas id="chart-etco2"></canvas></div></div>
+  <div class="chart-card"><h3>Presión Arterial (PAS / PAD / PAM)</h3><div class="chart-wrap"><canvas id="chart-pa"></canvas></div></div>
+  <div class="chart-card"><h3>Temperatura Central</h3><div class="chart-wrap"><canvas id="chart-temp"></canvas></div></div>
+  <button class="add-row-btn" style="width:100%;justify-content:center;margin-bottom:12px" onclick="actualizarGraficos()">🔄 Actualizar gráficos</button>
+</div>
+
+<!-- ========== TAB 5: ESTADÍSTICAS ========== -->
+<div id="tab-estadisticas" class="page">
+  <div style="background:var(--teal-light);border:1px solid #b2ddd9;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--teal)">
+    📊 Estadísticas calculadas sobre todas las fichas guardadas. Guardá fichas para ver los datos acumularse.
+  </div>
+
+  <div class="stat-grid" id="stat-grid">
+    <div class="stat-card"><div class="stat-num" id="s-total">0</div><div class="stat-label">Fichas guardadas</div></div>
+    <div class="stat-card red"><div class="stat-num" id="s-compl">0%</div><div class="stat-label">Con complicaciones</div></div>
+    <div class="stat-card accent"><div class="stat-num" id="s-bloqueo">0%</div><div class="stat-label">Con bloqueo regional</div></div>
+    <div class="stat-card navy"><div class="stat-num" id="s-peso">—</div><div class="stat-label">Peso promedio (kg)</div></div>
+  </div>
+
+  <div class="chart-card"><h3>Complicaciones más frecuentes</h3><div class="chart-wrap"><canvas id="chart-compl"></canvas></div></div>
+  <div class="chart-card"><h3>Tipo de bloqueo regional</h3><div class="chart-wrap"><canvas id="chart-bloqueo"></canvas></div></div>
+  <div class="chart-card"><h3>Distribución ASA</h3><div class="chart-wrap"><canvas id="chart-asa"></canvas></div></div>
+  <div class="chart-card"><h3>Especie</h3><div class="chart-wrap"><canvas id="chart-especie"></canvas></div></div>
+  <div class="chart-card"><h3>Tipo de mantenimiento</h3><div class="chart-wrap"><canvas id="chart-mante"></canvas></div></div>
+  <div class="chart-card"><h3>Riesgo Anestésico</h3><div class="chart-wrap"><canvas id="chart-riesgo"></canvas></div></div>
+
+  <button class="add-row-btn" style="width:100%;justify-content:center;margin-bottom:12px" onclick="cargarEstadisticas()">🔄 Actualizar estadísticas</button>
+
+  <div class="section">
+    <div class="section-title">Fichas guardadas localmente</div>
+    <div class="section-body" id="fichas-list">
+      <p style="color:var(--muted);font-size:12px">No hay fichas guardadas aún.</p>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <button class="btn btn-secondary" onclick="limpiarForm()">🗑 Nueva</button>
+  <button class="btn btn-primary" id="btn-guardar" onclick="guardarYEnviar()">💾 Guardar</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwYxc1vBOQqUC__duIuOpx9SAv0xviDkf4uqvyyJC1Zae5cJlDStWDljY3YrsGuqfij/exec';
+
+// ---- TABS ----
+function showTab(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'graficos') actualizarGraficos();
+  if (name === 'estadisticas') cargarEstadisticas();
+}
+
+// ---- SCORE / ASA ----
+let scoreVal = null, asaVal = null;
+function setScore(n, btn) {
+  scoreVal = n;
+  document.querySelectorAll('#score-group .score-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setASA(v, btn) {
+  asaVal = v;
+  document.querySelectorAll('#asa-group .asa-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ---- MONITOR TABLE ----
+const PARAMS = [
+  {id:'mon_o2',   label:'O₂ L/min'},
+  {id:'mon_iso',  label:'Isofluorano'},
+  {id:'mon_sevo', label:'Sevofluorano'},
+  {id:'mon_fc',   label:'F.C.'},
+  {id:'mon_fr',   label:'F.R.'},
+  {id:'mon_eac',  label:'E/A/C'},
+  {id:'mon_spo2', label:'SpO₂ %'},
+  {id:'mon_etco2',label:'ETCO₂'},
+  {id:'mon_pas',  label:'PAS'},
+  {id:'mon_pad',  label:'PAD'},
+  {id:'mon_pam',  label:'PAM'},
+  {id:'mon_pvc',  label:'P.V.C.'},
+  {id:'mon_tc',   label:'T° Central'},
+  {id:'mon_tp',   label:'T° Periférica'},
+  {id:'mon_orina',label:'Prod. Orina'},
+  {id:'mon_drogas',label:'DROGAS'},
+  {id:'mon_flu',  label:'FLUIDOS'},
+  {id:'mon_dec',  label:'Decúbito'},
+  {id:'mon_pos',  label:'Posición G.O.'},
+  {id:'mon_mm',   label:'MM'},
+  {id:'mon_tllc', label:'TLLC'},
+];
+const COLS = 11;
+
+function buildMonitorTable() {
+  const tbody = document.getElementById('monitor-body');
+  PARAMS.forEach(p => {
+    const tr = document.createElement('tr');
+    let cells = `<td class="plabel">${p.label}</td>`;
+    for (let i = 0; i < COLS; i++) {
+      cells += `<td><input type="text" id="${p.id}_${i}" maxlength="8" oninput="onMonitorInput()"></td>`;
+    }
+    tr.innerHTML = cells;
+    tbody.appendChild(tr);
+  });
+}
+buildMonitorTable();
+
+// ---- DRUG ROWS ----
+function addDrugRow(tbodyId) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input type="text" placeholder="Droga"></td><td><input type="text" placeholder="mg/kg"></td><td><input type="text" placeholder="Vía"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td>`;
+  document.getElementById(tbodyId).appendChild(tr);
+}
+function removeRow(btn) { btn.closest('tr').remove(); }
+
+// ---- COMPLICACIONES ----
+function ningunaCheck() {
+  if (document.getElementById('c_ninguna').checked) {
+    ['c_arritmia','c_intub','c_taquicardia','c_vomito','c_bradicardia',
+     'c_hipertermia','c_hipotermia','c_htn','c_hipercapnia','c_hipotension',
+     'c_desat','c_muerte','c_eutanasia','c_otros'].forEach(id => {
+      document.getElementById(id).checked = false;
+    });
+  }
+}
+
+// ---- TOAST ----
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ---- RECOPILAR DATOS ----
+function recopilarDatos() {
+  const d = {};
+  // campos simples
+  ['fecha','hc','proc1','proc2','cirujano','ayudante','anestesiologo',
+   'propietario','nombre_pac','especie','raza','sexo','edad','peso',
+   'ayuno_s','ayuno_l','fc_pre','fr_pre','pulso_pre','spo2_pre','temp_pre',
+   'pr_pre','mm_pre','tllc_pre','dht','pa_pre','compl_prev',
+   'hto','gr','gb','plaq','urea','cr','pt','alb','glu','radio_estudio','eco',
+   'patologias','circuito','tubo','abordaje_loc','loc',
+   'h_inicio_anest','h_inicio_cx','h_fin_cx','h_fin_anest',
+   'fc_rec','fr_rec','spo2_rec','tllc_rec','mm_rec','temp_rec','pulso_rec',
+   'pa_rec','pvc_rec','decubito_rec','h_extubacion','antagonistas','h_antagonista',
+   'escala_dolor','h_dolor','puntaje_dolor','rescate_analg','comentarios',
+   'indicaciones_post','destino_post','firma_nombre','firma_fecha'
+  ].forEach(id => { const el = document.getElementById(id); if(el) d[id] = el.value; });
+
+  // radios
+  ['agresivo','est_mental','riesgo','anest_prev','efecto_mpa','conciencia'].forEach(name => {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    d[name] = el ? el.value : '';
+  });
+
+  // checkboxes simples
+  ['tipo_tiva','tipo_inh'].forEach(id => { d[id] = document.getElementById(id)?.checked ? '1' : '0'; });
+
+  // bloqueos
+  const blqs = [];
+  ['blq_local','blq_epidural','blq_espinal','blq_neuro','blq_ninguno'].forEach(id => {
+    if(document.getElementById(id)?.checked) blqs.push(document.getElementById(id).value);
+  });
+  d['bloqueo_regional'] = blqs.join(', ') || 'Sin datos';
+
+  // complicaciones
+  const complicaciones = [];
+  const cIds = ['c_ninguna','c_arritmia','c_intub','c_taquicardia','c_vomito','c_bradicardia',
+    'c_hipertermia','c_hipotermia','c_htn','c_hipercapnia','c_hipotension','c_desat','c_muerte','c_eutanasia','c_otros'];
+  const cNames = ['Ninguna','Arritmias','Intubación dificultosa','Taquicardia','Vómitos','Bradicardia',
+    'Hipertermia','Hipotermia','Hipertensión','Hipercapnia','Hipotensión','Desaturación','Muerte','Eutanasia','Otros'];
+  cIds.forEach((id, i) => { if(document.getElementById(id)?.checked) complicaciones.push(cNames[i]); });
+  d['complicaciones'] = complicaciones.join(', ') || 'Sin datos';
+
+  // monitor
+  PARAMS.forEach(p => {
+    const vals = [];
+    for(let i = 0; i < COLS; i++) {
+      const el = document.getElementById(`${p.id}_${i}`);
+      vals.push(el ? el.value : '');
+    }
+    d[p.id] = vals.join('|');
+  });
+
+  d['score_corporal'] = scoreVal || '';
+  d['asa'] = asaVal || '';
+  d['_timestamp'] = new Date().toISOString();
+  return d;
+}
+
+// ---- GUARDAR Y ENVIAR ----
+async function guardarYEnviar() {
+  const btn = document.getElementById('btn-guardar');
+  btn.textContent = '⏳ Guardando...';
+  btn.disabled = true;
+
+  const data = recopilarDatos();
+
+  // guardar local siempre
+  try {
+    const registros = JSON.parse(localStorage.getItem('fichas_anest') || '[]');
+    data._localId = Date.now();
+    registros.push(data);
+    localStorage.setItem('fichas_anest', JSON.stringify(registros));
+  } catch(e) {}
+
+  // enviar a Sheets
+  try {
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    showToast('✅ Ficha guardada y enviada a Google Sheets');
+  } catch(e) {
+    showToast('💾 Guardado local OK (sin conexión a Sheets)', true);
+  }
+
+  btn.textContent = '💾 Guardar';
+  btn.disabled = false;
+}
+
+// ---- LIMPIAR ----
+function limpiarForm() {
+  if (!confirm('¿Limpiar la ficha actual para un nuevo paciente?')) return;
+  document.querySelectorAll('input:not([type=radio]):not([type=checkbox]), select, textarea').forEach(el => el.value = '');
+  document.querySelectorAll('input[type=radio], input[type=checkbox]').forEach(el => el.checked = false);
+  scoreVal = null; asaVal = null;
+  document.querySelectorAll('.score-btn, .asa-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('fecha').valueAsDate = new Date();
+  showToast('🗑 Ficha limpiada');
+}
+
+// ---- GRÁFICOS DE MONITOREO ----
+let chartInstances = {};
+
+function getMonitorRow(paramId) {
+  const vals = [];
+  for(let i = 0; i < COLS; i++) {
+    const el = document.getElementById(`${paramId}_${i}`);
+    const v = el ? parseFloat(el.value) : NaN;
+    vals.push(isNaN(v) ? null : v);
+  }
+  return vals;
+}
+
+const XLABELS = ['0','15','30','45','60','75','90','105','120','135','150'];
+
+function makeChart(canvasId, label, data, color, datasets) {
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+  const ctx = document.getElementById(canvasId)?.getContext('2d');
+  if (!ctx) return;
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: XLABELS,
+      datasets: datasets || [{
+        label, data, borderColor: color, backgroundColor: color + '22',
+        borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: color,
+        tension: 0.3, fill: true, spanGaps: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: datasets ? true : false, labels: { font: { size: 11 } } } },
+      scales: {
+        x: { title: { display: true, text: 'min', font: { size: 10 } }, grid: { color: '#eee' } },
+        y: { grid: { color: '#eee' }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function actualizarGraficos() {
+  makeChart('chart-fc', 'FC (lpm)', getMonitorRow('mon_fc'), '#1a3a5c');
+  makeChart('chart-fr', 'FR (rpm)', getMonitorRow('mon_fr'), '#0d7a6e');
+  makeChart('chart-spo2', 'SpO₂ (%)', getMonitorRow('mon_spo2'), '#2980b9');
+  makeChart('chart-etco2', 'ETCO₂', getMonitorRow('mon_etco2'), '#8e44ad');
+  makeChart('chart-temp', 'T° Central (°C)', getMonitorRow('mon_tc'), '#e8a020');
+  makeChart('chart-pa', 'PA', null, null, [
+    { label:'PAS', data: getMonitorRow('mon_pas'), borderColor:'#c0392b', backgroundColor:'transparent', borderWidth:2.5, pointRadius:4, tension:0.3, spanGaps:true },
+    { label:'PAD', data: getMonitorRow('mon_pad'), borderColor:'#2980b9', backgroundColor:'transparent', borderWidth:2.5, pointRadius:4, tension:0.3, spanGaps:true },
+    { label:'PAM', data: getMonitorRow('mon_pam'), borderColor:'#27ae60', backgroundColor:'transparent', borderWidth:2.5, pointRadius:4, tension:0.3, spanGaps:true },
+  ]);
+}
+
+function onMonitorInput() {
+  clearTimeout(window._monTimer);
+  window._monTimer = setTimeout(actualizarGraficos, 800);
+}
+
+// ---- ESTADÍSTICAS ----
+function cargarEstadisticas() {
+  let fichas = [];
+  try { fichas = JSON.parse(localStorage.getItem('fichas_anest') || '[]'); } catch(e) {}
+
+  document.getElementById('s-total').textContent = fichas.length;
+
+  if (fichas.length === 0) {
+    renderFichasList(fichas);
+    return;
+  }
+
+  // % complicaciones
+  const conCompl = fichas.filter(f => f.complicaciones && !f.complicaciones.includes('Ninguna') && f.complicaciones !== 'Sin datos').length;
+  document.getElementById('s-compl').textContent = Math.round(conCompl / fichas.length * 100) + '%';
+
+  // % bloqueo
+  const conBlq = fichas.filter(f => f.bloqueo_regional && !f.bloqueo_regional.includes('Ninguno') && f.bloqueo_regional !== 'Sin datos').length;
+  document.getElementById('s-bloqueo').textContent = Math.round(conBlq / fichas.length * 100) + '%';
+
+  // peso promedio
+  const pesos = fichas.map(f => parseFloat(f.peso)).filter(p => !isNaN(p));
+  document.getElementById('s-peso').textContent = pesos.length ? (pesos.reduce((a,b)=>a+b,0)/pesos.length).toFixed(1) : '—';
+
+  // Complicaciones
+  const cMap = {};
+  const cNames = ['Arritmias','Intubación dificultosa','Taquicardia','Vómitos','Bradicardia',
+    'Hipertermia','Hipotermia','Hipertensión','Hipercapnia','Hipotensión','Desaturación','Muerte','Eutanasia','Otros'];
+  cNames.forEach(c => cMap[c] = 0);
+  fichas.forEach(f => { if(f.complicaciones) f.complicaciones.split(', ').forEach(c => { if(cMap[c] !== undefined) cMap[c]++; }); });
+  const cFiltered = Object.entries(cMap).filter(([,v]) => v > 0).sort((a,b)=>b[1]-a[1]);
+  renderBarChart('chart-compl', cFiltered.map(e=>e[0]), cFiltered.map(e=>e[1]), '#c0392b');
+
+  // Bloqueos
+  const bMap = {};
+  fichas.forEach(f => {
+    if(f.bloqueo_regional) f.bloqueo_regional.split(', ').forEach(b => { bMap[b] = (bMap[b]||0) + 1; });
+  });
+  const bEntries = Object.entries(bMap).filter(([k])=>k && k!=='Sin datos').sort((a,b)=>b[1]-a[1]);
+  renderBarChart('chart-bloqueo', bEntries.map(e=>e[0]), bEntries.map(e=>e[1]), '#0d7a6e');
+
+  // ASA
+  const asaMap = {I:0,II:0,III:0,IV:0,V:0,E:0};
+  fichas.forEach(f => { if(f.asa && asaMap[f.asa]!==undefined) asaMap[f.asa]++; });
+  renderPieChart('chart-asa', Object.keys(asaMap), Object.values(asaMap));
+
+  // Especie
+  const espMap = {};
+  fichas.forEach(f => {
+    const e = (f.especie||'Sin datos').toLowerCase();
+    const key = e.includes('can') ? 'Canino' : e.includes('fel') ? 'Felino' : (f.especie||'Sin datos');
+    espMap[key] = (espMap[key]||0)+1;
+  });
+  renderPieChart('chart-especie', Object.keys(espMap), Object.values(espMap));
+
+  // Mantenimiento
+  const mMap = {TIVA:0, Inhalatoria:0, Mixto:0};
+  fichas.forEach(f => {
+    const t = f.tipo_tiva==='1', i = f.tipo_inh==='1';
+    if(t&&i) mMap['Mixto']++;
+    else if(t) mMap['TIVA']++;
+    else if(i) mMap['Inhalatoria']++;
+  });
+  renderPieChart('chart-mante', Object.keys(mMap), Object.values(mMap));
+
+  // Riesgo
+  const rMap = {Leve:0, Moderado:0, Severo:0};
+  fichas.forEach(f => { if(f.riesgo && rMap[f.riesgo]!==undefined) rMap[f.riesgo]++; });
+  renderBarChart('chart-riesgo', Object.keys(rMap), Object.values(rMap), '#e8a020');
+
+  renderFichasList(fichas);
+}
+
+function renderBarChart(canvasId, labels, data, color) {
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+  const ctx = document.getElementById(canvasId)?.getContext('2d');
+  if(!ctx || !labels.length) return;
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: color + 'cc', borderColor: color, borderWidth: 1.5, borderRadius: 5 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { ticks: { font:{size:10} } }, y: { ticks: { font:{size:11}, stepSize:1 }, beginAtZero: true } }
+    }
+  });
+}
+
+const PIE_COLORS = ['#1a3a5c','#0d7a6e','#e8a020','#c0392b','#8e44ad','#2980b9','#27ae60','#d35400'];
+function renderPieChart(canvasId, labels, data) {
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+  const ctx = document.getElementById(canvasId)?.getContext('2d');
+  if(!ctx) return;
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: PIE_COLORS, borderWidth: 2, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font:{size:11}, padding:10 } } }
+    }
+  });
+}
+
+function renderFichasList(fichas) {
+  const container = document.getElementById('fichas-list');
+  if (!fichas.length) { container.innerHTML = '<p style="color:var(--muted);font-size:12px">No hay fichas guardadas aún.</p>'; return; }
+  container.innerHTML = [...fichas].reverse().map(f => `
+    <div class="ficha-item">
+      <h4>${f.nombre_pac || 'Sin nombre'} — ${f.especie || '—'}</h4>
+      <p>${f.fecha || '—'} · ${f.anestesiologo || '—'} · Peso: ${f.peso || '—'} kg</p>
+      <span class="ficha-badge">${f.asa ? 'ASA '+f.asa : '—'}</span>
+      ${f.complicaciones && !f.complicaciones.includes('Ninguna') && f.complicaciones!=='Sin datos'
+        ? `<span class="ficha-badge red">⚠️ ${f.complicaciones}</span>` : ''}
+    </div>
+  `).join('');
+}
+
+// ---- INIT ----
+document.getElementById('fecha').valueAsDate = new Date();
+actualizarGraficos();
+</script>
+</body>
+</html>
