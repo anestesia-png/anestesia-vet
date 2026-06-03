@@ -277,6 +277,16 @@ textarea{resize:vertical;min-height:60px}
 .cri-times.show { display:flex; }
 .cri-times input { width:72px; border:1px solid var(--border); border-radius:5px; padding:3px 5px; font-size:11px; font-family:var(--font); }
 .cri-times label { font-size:9px; color:var(--muted); font-weight:600; display:block; margin-bottom:1px; }
+/* CALCULADORA */
+.calc-btn{background:#fff;border:none;padding:14px 0;font-size:16px;font-family:var(--font);cursor:pointer;transition:background .1s;color:var(--text)}
+.calc-btn:hover{background:#e8ecf0}
+.calc-btn:active{background:#d0d8e0}
+.calc-btn.op{background:#e8f4f2;color:var(--teal);font-weight:700}
+.calc-btn.op:hover{background:#c8e8e4}
+.calc-btn.special{background:#f0f0f0;color:var(--navy);font-weight:600}
+.calc-btn.zero{grid-column:span 2;text-align:left;padding-left:20px}
+.calc-btn.equal{background:var(--teal);color:#fff;font-weight:700}
+.calc-btn.equal:hover{background:#0a5c52}
 /* TOGGLE BUTTONS MANTENIMIENTO */
 .btn-group-toggle{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .toggle-btn{padding:8px 20px;border:2px solid var(--border);border-radius:8px;background:var(--white);color:var(--text);font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;transition:all .15s}
@@ -1327,6 +1337,56 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
   <button class="btn btn-primary" id="btn-guardar" onclick="guardarYEnviar()">💾 Guardar</button>
 </div>
 
+<!-- CALCULADORA FLOTANTE -->
+<button id="calc-fab" onclick="toggleCalc()" title="Calculadora" style="
+  position:fixed;bottom:80px;right:16px;z-index:998;
+  width:48px;height:48px;border-radius:50%;border:none;
+  background:var(--navy);color:#fff;font-size:22px;
+  box-shadow:0 4px 16px rgba(0,0,0,.25);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s">🧮</button>
+
+<div id="calc-modal" style="
+  display:none;position:fixed;bottom:138px;right:16px;z-index:998;
+  background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.22);
+  width:220px;overflow:hidden">
+  <div style="background:var(--navy);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+    <span style="color:#fff;font-size:13px;font-weight:600">Calculadora</span>
+    <button onclick="toggleCalc()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;line-height:1">×</button>
+  </div>
+  <!-- Display -->
+  <div style="background:#f0f4f8;padding:10px 14px;text-align:right">
+    <div id="calc-expr" style="font-size:11px;color:var(--muted);min-height:16px;font-family:var(--mono)"></div>
+    <div id="calc-display" style="font-size:26px;font-weight:700;color:var(--navy);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">0</div>
+  </div>
+  <!-- Botones -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e0e5ea">
+    <button class="calc-btn special" onclick="calcAction('clear')">C</button>
+    <button class="calc-btn special" onclick="calcAction('sign')">+/-</button>
+    <button class="calc-btn special" onclick="calcAction('percent')">%</button>
+    <button class="calc-btn op" onclick="calcAction('/')">÷</button>
+
+    <button class="calc-btn" onclick="calcAction('7')">7</button>
+    <button class="calc-btn" onclick="calcAction('8')">8</button>
+    <button class="calc-btn" onclick="calcAction('9')">9</button>
+    <button class="calc-btn op" onclick="calcAction('*')">×</button>
+
+    <button class="calc-btn" onclick="calcAction('4')">4</button>
+    <button class="calc-btn" onclick="calcAction('5')">5</button>
+    <button class="calc-btn" onclick="calcAction('6')">6</button>
+    <button class="calc-btn op" onclick="calcAction('-')">−</button>
+
+    <button class="calc-btn" onclick="calcAction('1')">1</button>
+    <button class="calc-btn" onclick="calcAction('2')">2</button>
+    <button class="calc-btn" onclick="calcAction('3')">3</button>
+    <button class="calc-btn op" onclick="calcAction('+')">+</button>
+
+    <button class="calc-btn zero" onclick="calcAction('0')">0</button>
+    <button class="calc-btn" onclick="calcAction('.')">.</button>
+    <button class="calc-btn op equal" onclick="calcAction('=')">=</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1887,6 +1947,53 @@ function recopilarDatos() {
   d['asa'] = asaVal || '';
   d['_timestamp'] = new Date().toISOString();
   return d;
+}
+
+// ---- CALCULADORA ----
+let calcVal = '0', calcPrev = '', calcOp = null, calcNewNum = false;
+
+function toggleCalc() {
+  const m = document.getElementById('calc-modal');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+
+function calcUpdate() {
+  document.getElementById('calc-display').textContent =
+    parseFloat(calcVal).toLocaleString('es-AR', {maximumFractionDigits: 10});
+}
+
+function calcAction(btn) {
+  const ops = ['+','-','*','/'];
+  if (btn === 'clear') {
+    calcVal = '0'; calcPrev = ''; calcOp = null; calcNewNum = false;
+    document.getElementById('calc-expr').textContent = '';
+  } else if (btn === 'sign') {
+    calcVal = String(-parseFloat(calcVal));
+  } else if (btn === 'percent') {
+    calcVal = String(parseFloat(calcVal) / 100);
+  } else if (ops.includes(btn)) {
+    if (calcOp && !calcNewNum) calcAction('=');
+    calcPrev = calcVal; calcOp = btn; calcNewNum = true;
+    const sym = {'+':'+','-':'−','*':'×','/':'÷'}[btn];
+    document.getElementById('calc-expr').textContent = calcVal + ' ' + sym;
+  } else if (btn === '=') {
+    if (!calcOp) return;
+    const a = parseFloat(calcPrev), b = parseFloat(calcVal);
+    const sym = {'+':'+','-':'−','*':'×','/':'÷'}[calcOp];
+    document.getElementById('calc-expr').textContent = calcPrev + ' ' + sym + ' ' + calcVal + ' =';
+    if (calcOp==='+') calcVal = String(a+b);
+    else if (calcOp==='-') calcVal = String(a-b);
+    else if (calcOp==='*') calcVal = String(a*b);
+    else if (calcOp==='/') calcVal = b !== 0 ? String(a/b) : 'Error';
+    calcOp = null; calcNewNum = true;
+  } else if (btn === '.') {
+    if (calcNewNum) { calcVal = '0.'; calcNewNum = false; }
+    else if (!calcVal.includes('.')) calcVal += '.';
+  } else {
+    if (calcNewNum || calcVal === '0') { calcVal = btn; calcNewNum = false; }
+    else calcVal += btn;
+  }
+  calcUpdate();
 }
 
 // ---- GUARDAR Y ENVIAR ----
