@@ -119,8 +119,8 @@ textarea{resize:vertical;min-height:60px}
 .drug-table td{border-bottom:1px solid var(--border);padding:4px}
 .drug-table input{border:none;background:transparent;font-size:12px;width:100%;padding:2px}
 .drug-table input:focus{background:#fffbe6;outline:none}
-.drug-select{border:none;background:transparent;font-size:12px;width:100%;padding:2px;color:var(--text);font-family:var(--font);cursor:pointer;-webkit-appearance:none}
-.drug-select:focus{background:#fffbe6;outline:none}
+.drug-select{border:1px solid var(--border);background:var(--input-bg);border-radius:4px;font-size:12px;width:100%;padding:3px 4px;color:var(--text);font-family:var(--font);cursor:pointer}
+.drug-select:focus{background:#fffbe6;outline:none;border-color:var(--teal)}
 .otra-input{display:none;border:none;border-top:1px dashed var(--border);background:#fffbe6;font-size:11px;width:100%;padding:3px 2px;margin-top:2px;font-family:var(--font);font-style:italic}
 .otra-input.visible{display:block}
 .otra-input:focus{outline:none;background:#fff9d6}
@@ -131,10 +131,12 @@ textarea{resize:vertical;min-height:60px}
 /* MONITOR TABLE */
 .monitor-table{border-collapse:collapse;width:100%;min-width:560px;font-size:11px;font-family:var(--mono)}
 .monitor-table th{background:var(--navy);color:#fff;padding:5px 4px;text-align:center;font-weight:600;font-size:10px;white-space:nowrap}
-.monitor-table th.pcol{background:var(--navy-light);text-align:left;padding-left:8px;min-width:95px}
-.monitor-table td{border:1px solid var(--border);padding:2px;text-align:center}
-.monitor-table td.plabel{background:#eef2f6;font-size:10px;font-weight:600;text-align:left;padding:4px 8px;color:var(--navy);white-space:nowrap}
-.monitor-table input{border:none;background:transparent;width:100%;text-align:center;font-size:11px;font-family:var(--mono);padding:3px 2px;color:var(--text)}
+.monitor-table th.pcol{background:var(--navy-light);text-align:left;padding-left:8px;min-width:70px}
+.monitor-table td{border:1px solid var(--border);padding:2px;text-align:center;min-width:32px}
+.monitor-table td.plabel{background:#eef2f6;font-size:10px;font-weight:600;text-align:left;padding:3px 5px;color:var(--navy);white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
+.monitor-table td.plabel-group{background:var(--teal)!important;color:#fff;font-weight:700;font-size:10px;letter-spacing:.5px;text-align:center;vertical-align:middle;width:20px;padding:2px;white-space:nowrap}
+.monitor-table td.plabel-group.pai{background:#7b2d00!important}
+.monitor-table input{border:none;background:transparent;width:100%;min-width:30px;text-align:center;font-size:11px;font-family:var(--mono);padding:3px 1px;color:var(--text)}
 .monitor-table input:focus{background:#fffbe6;outline:none}
 .monitor-table tr:nth-child(even) td{background:#f7f9fb}
 .monitor-table tr:nth-child(even) td.plabel{background:#e8edf2}
@@ -416,7 +418,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <div class="cl-section-title teal">Datos del Caso</div>
     <div class="cl-body">
       <div class="cl-fields">
-        <div class="cl-field" style="min-width:100%"><label>Nombre de la Familia / Propietario</label><input type="text" id="cl_familia" oninput="clSync()" placeholder="Familia responsable"></div>
+        <div class="cl-field" style="min-width:100%"><label>Nombre de la Familia</label><input type="text" id="cl_familia" oninput="clSync()" placeholder="Familia responsable"></div>
       </div>
       <div class="cl-fields">
         <div class="cl-field"><label>N° de Historia Clínica</label><input type="text" id="cl_hc" oninput="clSync()" placeholder="HC-0000"></div>
@@ -451,6 +453,10 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
   </div>
 
   <!-- Barra de progreso -->
+  <div style="text-align:right;margin-bottom:6px">
+    <button onclick="tildarTodo()" style="background:#e8ecf0;color:var(--muted);border:none;border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;opacity:.6">☑ Tildar todo (test)</button>
+  </div>
+
   <div class="cl-progress-wrap">
     <div class="cl-progress-label">
       <span>Progreso del Checklist</span>
@@ -528,10 +534,15 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
         <div class="field half"><label>Historia Clínica N°</label><input type="text" id="hc" placeholder="HC-0000"></div>
       </div>
       <div class="row">
-        <div class="field full"><label>Procedimiento 1°</label><input type="text" id="proc1"></div>
-      </div>
-      <div class="row">
-        <div class="field full"><label>Procedimiento 2°</label><input type="text" id="proc2"></div>
+        <div class="field full">
+          <label>Procedimiento</label>
+          <div id="proc-list">
+            <div class="proc-item" style="display:flex;gap:6px;margin-bottom:5px">
+              <input type="text" id="proc1" style="flex:1" placeholder="Procedimiento principal">
+              <button type="button" onclick="addProcRow()" style="background:var(--teal);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">+ Agregar</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="row">
         <div class="field full"><label>Cirujan@</label><input type="text" id="cirujano"></div>
@@ -549,7 +560,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <div class="section-title teal">Datos del Paciente</div>
     <div class="section-body">
       <div class="row">
-        <div class="field half"><label>Propietario</label><input type="text" id="propietario"></div>
+        <div class="field half"><label>Familia</label><input type="text" id="propietario"></div>
         <div class="field half"><label>Nombre del Paciente</label><input type="text" id="nombre_pac"></div>
       </div>
       <div class="row">
@@ -567,7 +578,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
         </div>
       </div>
       <div class="row">
-        <div class="field half"><label>Edad</label><input type="text" id="edad" placeholder="ej: 3 años"></div>
+        <div class="field half"><label>Edad (años)</label><input type="text" id="edad" placeholder="ej: 3 años"></div>
         <div class="field half"><label>Peso (kg)</label><input type="number" id="peso" step="0.1"></div>
       </div>
     </div>
@@ -856,14 +867,16 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
         <table class="monitor-table">
           <thead>
             <tr>
-              <th class="pcol">Parámetro</th>
+              <th class="pcol" colspan="2">Parámetro</th>
               <th class="hg1" colspan="12">Hora 1 (0–55 min)</th>
-              <th class="hg2" colspan="13">Hora 2 (60–120 min)</th>
+              <th class="hg2" colspan="12">Hora 2 (60–115 min)</th>
+              <th class="hg3" colspan="13">Hora 3 (120–180 min)</th>
             </tr>
             <tr>
-              <th class="pcol">min →</th>
+              <th class="pcol" colspan="2">min →</th>
               <th>0</th><th>5</th><th>10</th><th>15</th><th>20</th><th>25</th><th>30</th><th>35</th><th>40</th><th>45</th><th>50</th><th>55</th>
-              <th>60</th><th>65</th><th>70</th><th>75</th><th>80</th><th>85</th><th>90</th><th>95</th><th>100</th><th>105</th><th>110</th><th>115</th><th>120</th>
+              <th>60</th><th>65</th><th>70</th><th>75</th><th>80</th><th>85</th><th>90</th><th>95</th><th>100</th><th>105</th><th>110</th><th>115</th>
+              <th>120</th><th>125</th><th>130</th><th>135</th><th>140</th><th>145</th><th>150</th><th>155</th><th>160</th><th>165</th><th>170</th><th>175</th><th>180</th>
             </tr>
           </thead>
           <tbody id="monitor-body"></tbody>
@@ -902,15 +915,21 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
 <div id="tab-recuperacion" class="page">
 
   <div class="section">
+      <div class="section-title teal">Antagonistas</div>
+      <div class="section-body">
+        <div class="tbl-wrap">
+          <table class="drug-table"><thead><tr><th>Droga</th><th>Dosis</th><th>Vía</th><th>Hora</th><th></th></tr></thead>
+          <tbody id="antag-body"></tbody></table>
+        </div>
+        <button class="add-row-btn" onclick="addMpaIndRow('antag-body')">+ Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
     <div class="section-title teal">Recuperación</div>
     <div class="section-body">
       <div class="hora-row"><label>Hora extubación</label><input type="time" id="h_extubacion"></div>
-      <div class="row">
-        <div class="field full"><label>Antagonistas</label><input type="text" id="antagonistas" placeholder="Droga / Dosis / Vía"></div>
-      </div>
-      <div class="row">
-        <div class="field half"><label>Hora antagonista</label><input type="time" id="h_antagonista"></div>
-      </div>
       <hr class="div">
       <div class="row">
         <div class="field third"><label>FC</label><input type="number" id="fc_rec"></div>
@@ -936,15 +955,6 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
             <label><input type="radio" name="conciencia" value="Excitado"><span>Excitado</span></label>
           </div>
         </div>
-      </div>
-      <hr class="div">
-      <div class="row">
-        <div class="field third"><label>Escala de dolor</label><input type="text" id="escala_dolor"></div>
-        <div class="field third"><label>Hora</label><input type="time" id="h_dolor"></div>
-        <div class="field third"><label>Puntaje</label><input type="number" id="puntaje_dolor" min="0" max="20"></div>
-      </div>
-      <div class="row">
-        <div class="field full"><label>Rescate Analgésico</label><textarea id="rescate_analg" placeholder="Droga / Dosis / Vía / Hora"></textarea></div>
       </div>
     </div>
   </div>
@@ -1107,6 +1117,10 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
           <div class="dolor-score-num" id="dolor-num-canino">—</div>
           <div class="dolor-score-interp" id="dolor-interp-canino"></div>
         </div>
+        <div id="rescate-canino" style="display:none;margin-top:10px;background:#fff3cd;border:1.5px solid #e8a020;border-radius:10px;padding:12px 14px">
+          <label style="font-size:11px;font-weight:700;color:#7a5200;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">🚨 Rescate Analgésico</label>
+          <textarea id="rescate_analg" placeholder="Droga / Dosis / Vía / Hora" style="width:100%;border:1.5px solid #e8a020;border-radius:6px;padding:7px 9px;font-size:13px;font-family:var(--font);background:#fffde7;resize:vertical;min-height:60px"></textarea>
+        </div>
         <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:right">Glasgow CMPS-SF — Reconsiderar analgesia cuando CMPS &gt; 6/24 ó 5/20</div>
       </div>
     </div>
@@ -1188,6 +1202,10 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
           <div class="dolor-score-label">Puntaje Total</div>
           <div class="dolor-score-num" id="dolor-num-felino">—</div>
           <div class="dolor-score-interp" id="dolor-interp-felino"></div>
+        </div>
+        <div id="rescate-felino" style="display:none;margin-top:10px;background:#fff3cd;border:1.5px solid #e8a020;border-radius:10px;padding:12px 14px">
+          <label style="font-size:11px;font-weight:700;color:#7a5200;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">🚨 Rescate Analgésico</label>
+          <textarea id="rescate_analg_felino" placeholder="Droga / Dosis / Vía / Hora" style="width:100%;border:1.5px solid #e8a020;border-radius:6px;padding:7px 9px;font-size:13px;font-family:var(--font);background:#fffde7;resize:vertical;min-height:60px"></textarea>
         </div>
         <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:right">Feline Grimace Scale © Université de Montréal 2019 — Reconsiderar analgesia cuando total &gt; 4/10</div>
       </div>
@@ -1406,6 +1424,9 @@ function showTab(name, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   btn.classList.add('active');
+  // Scroll al inicio al cambiar pestaña
+  document.querySelector('.tabs')?.scrollIntoView({behavior:'smooth', block:'start'});
+  window.scrollTo({top:0, behavior:'smooth'});
   if (name === 'frente') fillPausaFields();
   if (name === 'dolor') refreshDolorTab((document.getElementById('especie')||{}).value || (document.getElementById('cl_especie')||{}).value || '');
   if (name === 'graficos') actualizarGraficos();
@@ -1515,15 +1536,19 @@ function calcDolor(especie) {
     if (total < thresh) {
       interpEl.textContent = '✅ Sin dolor significativo';
       interpEl.style.background = 'rgba(13,122,110,.45)';
+      document.getElementById(`rescate-${especie}`)?.style && (document.getElementById(`rescate-${especie}`).style.display = 'none');
     } else if (total < thresh * 2) {
       interpEl.textContent = '⚠️ Dolor moderado — considerar analgesia';
       interpEl.style.background = 'rgba(232,160,32,.55)';
+      document.getElementById(`rescate-${especie}`)?.style && (document.getElementById(`rescate-${especie}`).style.display = 'block');
     } else {
       interpEl.textContent = '🔴 Dolor severo — analgesia de rescate';
       interpEl.style.background = 'rgba(192,57,43,.55)';
+      document.getElementById(`rescate-${especie}`)?.style && (document.getElementById(`rescate-${especie}`).style.display = 'block');
     }
   } else {
     interpEl.textContent = '';
+    document.getElementById(`rescate-${especie}`)?.style && (document.getElementById(`rescate-${especie}`).style.display = 'none');
   }
 }
 
@@ -1565,43 +1590,233 @@ function setASA(v, btn) {
 }
 
 // ---- MONITOR TABLE ----
-const PARAMS = [
+const PARAMS_BASE = [
   {id:'mon_o2',   label:'O₂ L/min'},
-  {id:'mon_iso',  label:'Isofluorano'},
-  {id:'mon_sevo', label:'Sevofluorano'},
+  {id:'mon_agen', label:'Agente', type:'select'},
   {id:'mon_fc',   label:'F.C.'},
   {id:'mon_fr',   label:'F.R.'},
   {id:'mon_eac',  label:'E/A/C'},
   {id:'mon_spo2', label:'SpO₂ %'},
   {id:'mon_etco2',label:'ETCO₂'},
-  {id:'mon_pas',  label:'PAS'},
-  {id:'mon_pad',  label:'PAD'},
-  {id:'mon_pam',  label:'PAM'},
-  {id:'mon_pvc',  label:'P.V.C.'},
+  {id:'mon_pas',  label:'PAS', group:'pani'},
+  {id:'mon_pad',  label:'PAD', group:'pani'},
+  {id:'mon_pam',  label:'PAM', group:'pani'},
   {id:'mon_tc',   label:'T° Central'},
-  {id:'mon_tp',   label:'T° Periférica'},
-  {id:'mon_orina',label:'Prod. Orina'},
-  {id:'mon_drogas',label:'DROGAS'},
-  {id:'mon_flu',  label:'FLUIDOS'},
-  {id:'mon_dec',  label:'Decúbito'},
-  {id:'mon_pos',  label:'Posición G.O.'},
-  {id:'mon_mm',   label:'MM'},
-  {id:'mon_tllc', label:'TLLC'},
 ];
-const COLS = 25;
+
+const PARAMS_EXTRA = [
+  {id:'mon_dec',   label:'Decúbito'},
+  {id:'mon_drogas',label:'DROGAS'},
+  {id:'mon_flu',   label:'FLUIDOS'},
+  {id:'mon_mm',    label:'MM'},
+  {id:'pai',       label:'PAI (invasiva)', type:'group', ids:['mon_pai_s','mon_pai_d','mon_pai_m'], sublabels:['PAS','PAD','PAM']},
+  {id:'mon_pos',   label:'Posición G.O.'},
+  {id:'mon_orina', label:'Prod. Orina'},
+  {id:'mon_tllc',  label:'TLLC'},
+  {id:'mon_tp',    label:'T° Periférica'},
+  {id:'mon_pvc',   label:'P.V.C.'},
+];
+
+// Opciones del select según tipo de mantenimiento
+const AGEN_INH  = ['Isofluorano','Sevofluorano'];
+const AGEN_TIVA = ['Dexmedetomidina','Fentanilo','Ketamina','Lidocaína','Medetomidina','Propofol','Remifentanilo'];
+
+function getAgenOpts() {
+  const isTIVA = document.getElementById('tipo_tiva')?.value === '1';
+  const isInh  = document.getElementById('tipo_inh')?.value === '1';
+  if (isTIVA && isInh) return [...AGEN_INH, ...AGEN_TIVA];
+  if (isTIVA) return AGEN_TIVA;
+  return AGEN_INH; // default / inhalatoria
+}
 
 function buildMonitorTable() {
   const tbody = document.getElementById('monitor-body');
-  PARAMS.forEach(p => {
+  tbody.innerHTML = '';
+
+  const agenOpts = getAgenOpts();
+  const optHtml = agenOpts.map(o => `<option value="${o}">${o}</option>`).join('');
+
+  // Render rows — agrupando PANI
+  let paniRendered = false;
+  PARAMS_BASE.forEach(p => {
+    if (p.group === 'pani' && paniRendered) return; // ya renderizado
+    if (p.group === 'pani' && !paniRendered) {
+      paniRendered = true;
+      // Renderizar las 3 filas PAS PAD PAM con columna PANI a la izquierda
+      const paniParams = PARAMS_BASE.filter(x => x.group === 'pani');
+      paniParams.forEach((pp, idx) => {
+        const tr = document.createElement('tr');
+        tr.id = 'row-' + pp.id;
+        let cells = '';
+        if (idx === 0) {
+          // Celda PANI con rowspan=3
+        cells += `<td class="plabel-group" rowspan="3">PANI</td>`;
+
+        }
+        cells += `<td class="plabel" style="font-size:11px;padding-left:4px">${pp.label}</td>`;
+        for (let i = 0; i < COLS; i++) {
+          cells += `<td><input type="text" id="${pp.id}_${i}" maxlength="8" oninput="onMonitorInput()"></td>`;
+        }
+        tr.innerHTML = cells;
+        tbody.appendChild(tr);
+      });
+      return;
+    }
+
     const tr = document.createElement('tr');
-    let cells = `<td class="plabel">${p.label}</td>`;
+    tr.id = 'row-' + p.id;
+    let labelCell;
+    if (p.type === 'select') {
+      labelCell = `<td class="plabel" colspan="2" style="padding:2px 4px">
+        <select id="${p.id}_label" style="width:100%;border:none;font-size:11px;font-family:var(--font);background:transparent;color:var(--text);font-weight:600">
+          <option value="">— Agente —</option>${optHtml}
+        </select>
+      </td>`;
+    } else {
+      labelCell = `<td class="plabel" colspan="2">${p.label}</td>`;
+    }
+    let cells = labelCell;
     for (let i = 0; i < COLS; i++) {
       cells += `<td><input type="text" id="${p.id}_${i}" maxlength="8" oninput="onMonitorInput()"></td>`;
     }
     tr.innerHTML = cells;
     tbody.appendChild(tr);
   });
+
+  // Fila de agregar extras
+  const addTr = document.createElement('tr');
+  addTr.id = 'row-add-extra';
+  const extraOpts = PARAMS_EXTRA.map(p =>
+    `<option value="${p.id}">${p.label}</option>`).join('');
+  addTr.innerHTML = `
+    <td class="plabel" colspan="2" style="background:#e8f4f2">
+      <select id="extra-param-sel" style="font-size:10px;font-family:var(--font);border:none;background:transparent;color:var(--teal);font-weight:600;width:100%">
+        <option value="">+ Agregar parámetro</option>${extraOpts}
+      </select>
+    </td>
+    ${Array(COLS).fill('<td style="background:#f8fcfc"></td>').join('')}`;
+  addTr.querySelector('select').addEventListener('change', function() {
+    if (!this.value) return;
+    const param = PARAMS_EXTRA.find(p => p.id === this.value);
+    if (param) addExtraRow(param);
+    this.value = '';
+  });
+  tbody.appendChild(addTr);
+
+  // También agregar TIVA rows si corresponde
+  if (document.getElementById('tipo_tiva')?.value === '1') {
+    addTivaRows();
+  }
+
+  // Rerender pausa si existía
+  renderPausaCol();
 }
+
+function addExtraRow(param) {
+  const tbody = document.getElementById('monitor-body');
+  const addRow = document.getElementById('row-add-extra');
+
+  // Grupo PAI
+  if (param.type === 'group') {
+    if (document.getElementById('row-pai-group')) return;
+    const sublabels = param.sublabels || [];
+    param.ids.forEach((pid, idx) => {
+      const tr = document.createElement('tr');
+      if (idx === 0) tr.id = 'row-pai-group';
+      let cells = '';
+      if (idx === 0) {
+        cells += `<td class="plabel-group pai" rowspan="3">PAI</td>`;
+      }
+      cells += `<td class="plabel">
+        ${sublabels[idx]||pid}
+        ${idx===0 ? `<button onclick="removePaiGroup()" style="float:right;background:none;border:none;color:#c0392b;cursor:pointer;font-size:13px;padding:0;line-height:1">×</button>` : ''}
+      </td>`;
+      for (let i = 0; i < COLS; i++) {
+        cells += `<td><input type="text" id="${pid}_${i}" maxlength="8" oninput="onMonitorInput()"></td>`;
+      }
+      tr.innerHTML = cells;
+      tbody.insertBefore(tr, addRow);
+    });
+    return;
+  }
+
+  // Fila simple
+  if (document.getElementById('row-' + param.id)) return;
+  const tr = document.createElement('tr');
+  tr.id = 'row-' + param.id;
+  let cells = `<td class="plabel" colspan="2">
+    <span>${param.label}</span>
+    <button onclick="document.getElementById('row-${param.id}').remove()" style="float:right;background:none;border:none;color:#c0392b;cursor:pointer;font-size:13px;padding:0;line-height:1">×</button>
+  </td>`;
+  for (let i = 0; i < COLS; i++) {
+    cells += `<td><input type="text" id="${param.id}_${i}" maxlength="8" oninput="onMonitorInput()"></td>`;
+  }
+  tr.innerHTML = cells;
+  tbody.insertBefore(tr, addRow);
+}
+
+function removePaiGroup() {
+  ['row-pai-group'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
+  // Remove all 3 rows (only first has id)
+  document.querySelectorAll('#monitor-body tr').forEach(tr => {
+    if (tr.querySelector('td[style*="PAI"]') || 
+        tr.querySelector('input[id^="mon_pai"]')) tr.remove();
+  });
+}
+
+function addTivaRows() {
+  const tbody = document.getElementById('monitor-body');
+  const agenRow = document.getElementById('row-mon_agen');
+  if (!agenRow || document.getElementById('row-tiva-add')) return;
+
+  const tivaOpts = AGEN_TIVA.map(o =>
+    `<option value="${o}">${o}</option>`).join('');
+
+  const tr = document.createElement('tr');
+  tr.id = 'row-tiva-add';
+  tr.innerHTML = `
+    <td class="plabel" colspan="2" style="background:#e8f0fa;padding:2px 4px">
+      <select id="tiva-drug-sel" style="font-size:10px;font-family:var(--font);border:none;background:transparent;color:var(--navy);font-weight:600;width:100%">
+        <option value="">+ Agregar droga TIVA</option>${tivaOpts}
+      </select>
+    </td>
+    ${Array(COLS).fill('<td style="background:#f4f6fb"></td>').join('')}`;
+
+  tr.querySelector('select').addEventListener('change', function() {
+    if (!this.value) return;
+    addTivaDrugRow(this.value);
+    this.value = '';
+  });
+
+  // Insertar justo después de la fila agente
+  agenRow.insertAdjacentElement('afterend', tr);
+}
+
+function addTivaDrugRow(drugName) {
+  const tbody = document.getElementById('monitor-body');
+  const tivaAddRow = document.getElementById('row-tiva-add');
+  const rowId = 'row-tiva-' + drugName.replace(/[^a-z]/gi, '');
+  if (document.getElementById(rowId)) return;
+
+  const tr = document.createElement('tr');
+  tr.id = rowId;
+  let cells = `<td class="plabel" colspan="2" style="background:#eef2fb">
+    <span style="font-size:10px">${drugName}</span>
+    <button onclick="document.getElementById('${rowId}').remove()" style="float:right;background:none;border:none;color:#c0392b;cursor:pointer;font-size:13px;padding:0;line-height:1">×</button>
+  </td>`;
+  for (let i = 0; i < COLS; i++) {
+    cells += `<td><input type="text" id="${rowId}_${i}" maxlength="8" oninput="onMonitorInput()"></td>`;
+  }
+  tr.innerHTML = cells;
+  // Insertar ANTES de la fila "agregar" para que esta siempre quede al final
+  tbody.insertBefore(tr, tivaAddRow);
+}
+
+const COLS = 37;
+
 buildMonitorTable();
 
 // ---- LISTAS DE DROGAS ----
@@ -1609,6 +1824,7 @@ const DROGAS = {
   'mpa-body': ['Acepromacina','Buprenorfina','Butorfanol','Dexmedetomidina','Fentanilo','Ketamina','Medetomidina','Meloxicam','Remifentanilo','Robenacoxib'],
   'ind-body': ['Etomidato','Isofluorano','Ketamina','Midazolam','Propofol','Sevofluorano','Tiopental'],
   'loc-body': ['Bupivacaína','Dexmedetomidina','Lidocaína','Medetomidina','Triamcinolona'],
+  'antag-body': ['Atipamezol','Flumazenil','Naloxona','Neostigmina','Yohimbina'],
   'intraop-body': ['Amiodarona','Dobutamina','Dopamina','Fentanilo','Isoproterenol','Ketamina','Labetalol','Lidocaína','Noradrenalina','Remifentanilo'],
 };
 
@@ -1643,24 +1859,28 @@ const DOSIS_MPA_IND = ['μg/kg','mg/kg','μg totales','mg totales','mL totales',
 
 function addMpaIndRow(tbodyId) {
   const tbody = document.getElementById(tbodyId);
-  const tr = document.createElement('tr');
+  if (!tbody) return;
+  const lista = DROGAS[tbodyId] || [];
+  const drugOpts = lista.map(d => `<option value="${d}">${d}</option>`).join('') + '<option value="__otra__">✏️ Otra...</option>';
   const unidadOpts = DOSIS_MPA_IND.map(o => `<option value="${o}">${o}</option>`).join('');
-  tr.innerHTML = `
-    <td>${drugSelectHTML(tbodyId)}</td>
-    <td>
-      <div style="display:flex;gap:4px;align-items:flex-start;flex-wrap:wrap">
-        <input type="number" class="dosis-num" placeholder="N°" step="any" style="width:52px;border:1px solid var(--border);border-radius:5px;padding:5px;font-size:12px;font-family:var(--font)">
-        <div style="flex:1;min-width:90px">
-          <select class="dosis-mpa-sel" onchange="toggleMpaOtra(this)" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:5px;font-size:12px;font-family:var(--font)">
-            <option value="">— unidad —</option>${unidadOpts}
-          </select>
-          <input type="text" class="otra-input" placeholder="Escribir..." style="margin-top:3px">
-        </div>
-      </div>
-    </td>
-    <td><input type="text" placeholder="Vía"></td>
-    <td><input type="time" style="border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;width:100%"></td>
-    <td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td>`;
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td>' +
+      '<select class="drug-select" onchange="toggleOtra(this)">' +
+        '<option value="">— Seleccionar —</option>' + drugOpts +
+      '</select>' +
+      '<input type="text" class="otra-input" placeholder="Escribir nombre...">' +
+    '</td>' +
+    '<td style="white-space:nowrap">' +
+      '<input type="number" class="dosis-num" placeholder="N°" step="any" style="width:46px;border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font)">' +
+      ' <select class="dosis-mpa-sel" onchange="toggleMpaOtra(this)" style="width:calc(100% - 52px);border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font)">' +
+        '<option value="">— unidad —</option>' + unidadOpts +
+      '</select>' +
+      '<input type="text" class="otra-input" placeholder="Especificar..." style="margin-top:3px">' +
+    '</td>' +
+    '<td><input type="text" placeholder="Vía" style="border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;width:100%"></td>' +
+    '<td><input type="time" style="border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;width:100%"></td>' +
+    '<td><button type="button" onclick="this.closest(\'tr\').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td>';
   tbody.appendChild(tr);
 }
 
@@ -1681,6 +1901,23 @@ function addDrugRow(tbodyId) {
     <td><input type="time"></td>
     <td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td>`;
   tbody.appendChild(tr);
+}
+
+function addProcRow() {
+  const list = document.getElementById('proc-list');
+  const div = document.createElement('div');
+  div.className = 'proc-item';
+  div.style.cssText = 'display:flex;gap:6px;margin-bottom:5px';
+  div.innerHTML = `
+    <input type="text" style="flex:1" placeholder="Procedimiento adicional">
+    <button type="button" onclick="this.closest('.proc-item').remove()" style="background:#e8ecf0;color:var(--navy);border:none;border-radius:6px;padding:6px 10px;font-size:16px;cursor:pointer;flex-shrink:0">×</button>`;
+  list.appendChild(div);
+  div.querySelector('input').focus();
+}
+
+function tildarTodo() {
+  document.querySelectorAll('#tab-verificacion .cl-item input[type=checkbox]').forEach(cb => cb.checked = true);
+  clUpdate();
 }
 
 function toggleNeuroeje() {
@@ -1714,6 +1951,8 @@ function toggleMante(tipo) {
   const inp = document.getElementById('tipo_' + tipo);
   const isActive = btn.classList.toggle('active');
   inp.value = isActive ? '1' : '0';
+  // Rebuild monitor table to reflect new agente options
+  buildMonitorTable();
 }
 
 const CONC_DOSIS_OPTS = ['2%','1%','0.75%','0.5%','0.25%','0.125%','μg/kg','μg/mL','mg/kg','mg/mL','Otra...'];
@@ -1798,6 +2037,7 @@ function toggleCriTimes(sel) {
 ['mpa-body','ind-body'].forEach(id => addMpaIndRow(id));
 addLocRow();
 addIntraopRow();
+addMpaIndRow('antag-body');
 
 // ---- COMPLICACIONES ----
 function ningunaCheck() {
@@ -1822,16 +2062,21 @@ function showToast(msg, isError) {
 function recopilarDatos() {
   const d = {};
   // campos simples
-  ['fecha','hc','proc1','proc2','cirujano','ayudante','anestesiologo',
-   'propietario','nombre_pac','especie','raza','sexo','edad','peso',
+  // procedimientos (campo dinámico)
+  const procInputs = document.querySelectorAll('#proc-list input');
+  const procs = Array.from(procInputs).map(i => i.value.trim()).filter(Boolean);
+  d['proc1'] = procs[0] || '';
+  d['procedimientos'] = procs.join(' / ');
+  // campos simples
+  ['hc','propietario','nombre_pac','especie','raza','sexo','edad','peso',
    'ayuno_s','ayuno_l','fc_pre','fr_pre','pulso_pre','spo2_pre','temp_pre',
    'pr_pre','mm_pre','tllc_pre','dht','pa_pre','compl_prev',
    'hto','gr','gb','plaq','urea','cr','pt','alb','glu','radio_estudio','eco',
    'patologias','abordaje_loc',
    'h_inicio_anest','h_inicio_cx','h_fin_cx','h_fin_anest',
    'fc_rec','fr_rec','spo2_rec','tllc_rec','mm_rec','temp_rec','pulso_rec',
-   'pa_rec','pvc_rec','decubito_rec','h_extubacion','antagonistas','h_antagonista',
-   'escala_dolor','h_dolor','puntaje_dolor','rescate_analg','comentarios',
+   'pa_rec','pvc_rec','decubito_rec','h_extubacion',
+   'escala_dolor','h_dolor','puntaje_dolor','comentarios',
    'indicaciones_post','destino_post','firma_nombre','firma_fecha'
   ].forEach(id => { const el = document.getElementById(id); if(el) d[id] = el.value; });
 
@@ -1916,7 +2161,7 @@ function recopilarDatos() {
     });
     return rows.join(' // ');
   }
-  d['drogas_mpa']      = leerTablaDrogas('mpa-body');
+  d['antagonistas'] = leerTablaDrogas('antag-body');
   d['drogas_induccion']= leerTablaDrogas('ind-body');
   d['drogas_regional'] = leerTablaDrogas('loc-body');
   d['drogas_intraop']  = leerTablaDrogas('intraop-body');
@@ -1931,16 +2176,22 @@ function recopilarDatos() {
   d['complicaciones'] = complicaciones.join(', ') || 'Sin datos';
 
   // monitor
-  PARAMS.forEach(p => {
+  // Agente seleccionado
+  d['mon_agen_label'] = document.getElementById('mon_agen_label')?.value || '';
+  // Recopilar todos los parámetros del monitor (base + extras activos)
+  const allParams = [...PARAMS_BASE, ...PARAMS_EXTRA];
+  allParams.forEach(p => {
     const vals = [];
     for(let i = 0; i < COLS; i++) {
       const el = document.getElementById(`${p.id}_${i}`);
-      vals.push(el ? el.value : '');
+      vals.push(el ? (el.tagName === 'SELECT' ? el.value : el.value) : '');
     }
     d[p.id] = vals.join('|');
   });
 
-  d['score_corporal'] = scoreVal || '';
+  // Rescate analgésico (desde solapa dolor)
+  d['rescate_analg'] = document.getElementById('rescate_analg')?.value ||
+                       document.getElementById('rescate_analg_felino')?.value || '';
   d['asa'] = asaVal || '';
   d['_timestamp'] = new Date().toISOString();
   return d;
@@ -2236,7 +2487,7 @@ function abrirFicha(f) {
           <div class="pdf-field"><strong>Anestesiólogo</strong>${val('anestesiologo')}</div>
           <div class="pdf-field"><strong>Cirujano</strong>${val('cirujano')}</div>
           <div class="pdf-field"><strong>Ayudante</strong>${val('ayudante')}</div>
-          <div class="pdf-field"><strong>Procedimiento</strong>${val('proc1')}</div>
+          <div class="pdf-field"><strong>Procedimiento</strong>${f.procedimientos || val('proc1')}</div>
           <div class="pdf-field"><strong>Inicio anestesia</strong>${val('h_inicio_anest')}</div>
           <div class="pdf-field"><strong>Inicio cirugía</strong>${val('h_inicio_cx')}</div>
           <div class="pdf-field"><strong>Fin cirugía</strong>${val('h_fin_cx')}</div>
@@ -2309,7 +2560,7 @@ function abrirFicha(f) {
 function renderGraficosEnModal(f) {
   const container = document.getElementById('pdf-graficos-container');
   container.innerHTML = '';
-  const XLABELS_PDF = ['0','5','10','15','20','25','30','35','40','45','50','55','60','65','70','75','80','85','90','95','100','105','110','115','120'];
+  const XLABELS_PDF = ['0','5','10','15','20','25','30','35','40','45','50','55','60','65','70','75','80','85','90','95','100','105','110','115','120','125','130','135','140','145','150','155','160','165','170','175','180'];
   const params = [
     { id: 'mon_fc',   label: 'FC (lpm)',       color: '#1a3a5c' },
     { id: 'mon_fr',   label: 'FR (rpm)',        color: '#0d7a6e' },
@@ -2406,7 +2657,13 @@ function limpiarForm() {
     document.getElementById('btn_'+t)?.classList.remove('active');
     document.getElementById('tipo_'+t).value = '0';
   });
-  // Reset asistencia otra
+  // Reset proc list
+  const procList = document.getElementById('proc-list');
+  if (procList) {
+    procList.querySelectorAll('.proc-item:not(:first-child)').forEach(el => el.remove());
+    const first = procList.querySelector('input');
+    if (first) first.value = '';
+  }
   const otraTxt = document.getElementById('blq_otra_asist_txt');
   if (otraTxt) otraTxt.style.display = 'none';
   document.getElementById('fecha').valueAsDate = new Date();
@@ -2426,7 +2683,7 @@ function getMonitorRow(paramId) {
   return vals;
 }
 
-const XLABELS = ['0','5','10','15','20','25','30','35','40','45','50','55','60','65','70','75','80','85','90','95','100','105','110','115','120'];
+const XLABELS = ['0','5','10','15','20','25','30','35','40','45','50','55','60','65','70','75','80','85','90','95','100','105','110','115','120','125','130','135','140','145','150','155','160','165','170','175','180'];
 
 function makeChart(canvasId, label, data, color, datasets) {
   if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
