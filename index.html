@@ -900,12 +900,10 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <div class="section-title">Fluidos</div>
     <div class="section-body">
       <div class="tbl-wrap">
-        <table class="drug-table"><thead><tr><th>Fluido</th><th>Velocidad</th><th>Vol. Total</th><th>Hora</th><th></th></tr></thead>
-        <tbody id="fluidos-body">
-          <tr><td><input type="text" placeholder="Tipo"></td><td><input type="text" placeholder="mL/kg/h"></td><td><input type="text" placeholder="mL"></td><td><input type="time"></td><td><button onclick="removeRow(this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button></td></tr>
-        </tbody></table>
+        <table class="drug-table"><thead><tr><th>Tipo</th><th>Tasa / Velocidad</th><th>Vol. Total (mL)</th><th></th></tr></thead>
+        <tbody id="fluidos-body"></tbody></table>
       </div>
-      <button class="add-row-btn" onclick="addDrugRow('fluidos-body')">+ Agregar</button>
+      <button class="add-row-btn" onclick="addFluidoRow()">+ Agregar</button>
     </div>
   </div>
 
@@ -1864,6 +1862,60 @@ function getDrugValue(cell) {
   return sel.value === '__otra__' ? (inp.value || 'Otra') : sel.value;
 }
 
+function addFluidoRow() {
+  const tbody = document.getElementById('fluidos-body');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+
+  // Tipo
+  const td1 = document.createElement('td');
+  const tipoSel = document.createElement('select');
+  tipoSel.style.cssText = 'width:100%;border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font)';
+  ['— Seleccionar —','NaCl 0,9%','Ringer Lactato','Dextrosa 5%','Otra...'].forEach((o, i) => {
+    const opt = document.createElement('option');
+    opt.value = i === 0 ? '' : o; opt.textContent = o;
+    tipoSel.appendChild(opt);
+  });
+  const tipoOtraInp = document.createElement('input');
+  tipoOtraInp.type = 'text'; tipoOtraInp.className = 'otra-input'; tipoOtraInp.placeholder = 'Especificar...';
+  tipoSel.addEventListener('change', function() {
+    tipoOtraInp.style.display = this.value === 'Otra...' ? 'block' : 'none';
+  });
+  td1.appendChild(tipoSel); td1.appendChild(tipoOtraInp);
+
+  // Tasa / Velocidad: número + unidad
+  const td2 = document.createElement('td');
+  const tasaNum = document.createElement('input');
+  tasaNum.type = 'number'; tasaNum.placeholder = 'N°'; tasaNum.step = 'any';
+  tasaNum.style.cssText = 'width:50px;border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font);margin-right:3px';
+  const tasaSel = document.createElement('select');
+  tasaSel.style.cssText = 'border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font)';
+  ['— unidad —','mL/kg/h','mL/h'].forEach((o, i) => {
+    const opt = document.createElement('option');
+    opt.value = i === 0 ? '' : o; opt.textContent = o;
+    tasaSel.appendChild(opt);
+  });
+  td2.appendChild(tasaNum); td2.appendChild(tasaSel);
+
+  // Vol. Total (mL)
+  const td3 = document.createElement('td');
+  const volInp = document.createElement('input');
+  volInp.type = 'number'; volInp.placeholder = 'mL'; volInp.step = '1';
+  volInp.style.cssText = 'width:100%;border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font)';
+  td3.appendChild(volInp);
+
+  // Eliminar
+  const td4 = document.createElement('td');
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.textContent = '×';
+  btn.style.cssText = 'background:none;border:none;color:var(--red);cursor:pointer;font-size:16px';
+  btn.addEventListener('click', () => tr.remove());
+  td4.appendChild(btn);
+
+  tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+  tbody.appendChild(tr);
+}
+
 function addMpaIndRow(tbodyId) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
@@ -2075,6 +2127,7 @@ function toggleCriTimes(sel) {
 addLocRow();
 addIntraopRow();
 addMpaIndRow('antag-body');
+addFluidoRow();
 
 // ---- COMPLICACIONES ----
 function ningunaCheck() {
