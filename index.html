@@ -3200,6 +3200,103 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// ---- PRE-CARGA DESDE URL (board semanal) ----
+// Si la URL tiene ?hc=XXX&proc=YYY&... llena los campos automáticamente.
+// Sin parámetros la ficha abre en blanco, igual que siempre.
+(function preCargarDesdeURL() {
+  const p = new URLSearchParams(window.location.search);
+  if (!p.has('hc') && !p.has('proc') && !p.has('especie')) return; // nada que hacer
+
+  // Mostrar banner discreto avisando que viene del board
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:9999;' +
+    'background:#0d7a6e;color:#fff;font-size:12px;padding:7px 18px;border-radius:20px;' +
+    'box-shadow:0 4px 16px rgba(0,0,0,.25);font-family:var(--font);white-space:nowrap;' +
+    'animation:fadeInDown .35s ease';
+  banner.textContent = '📋 Datos pre-cargados desde el Board Semanal';
+  const style = document.createElement('style');
+  style.textContent = '@keyframes fadeInDown{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+  document.head.appendChild(style);
+  document.body.appendChild(banner);
+  setTimeout(() => { banner.style.transition='opacity .4s'; banner.style.opacity='0'; setTimeout(()=>banner.remove(),400); }, 3500);
+
+  function set(id, val) {
+    if (!val) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = val;
+    el.dispatchEvent(new Event('input', {bubbles:true}));
+    el.dispatchEvent(new Event('change', {bubbles:true}));
+  }
+
+  function setSelect(id, val) {
+    if (!val) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    // Busca opción que contenga el valor (case-insensitive, parcial)
+    const opt = Array.from(el.options).find(o =>
+      o.value.toLowerCase().includes(val.toLowerCase()) ||
+      val.toLowerCase().includes(o.value.toLowerCase())
+    );
+    if (opt) {
+      el.value = opt.value;
+      el.dispatchEvent(new Event('change', {bubbles:true}));
+    }
+  }
+
+  // Esperar a que el DOM esté listo (tablas de drogas ya inicializadas)
+  setTimeout(() => {
+    const hc       = p.get('hc')       || '';
+    const proc     = p.get('proc')     || '';
+    const especie  = p.get('especie')  || '';
+    const raza     = p.get('raza')     || '';
+    const sexo     = p.get('sexo')     || '';
+    const prop     = p.get('prop')     || '';  // propietario/familia
+    const fecha    = p.get('fecha')    || '';  // YYYY-MM-DD
+    const hora     = p.get('hora')     || '';  // horario del turno
+
+    // ── Tab Preanestesia (campos principales) ──
+    set('hc',          hc);
+    set('proc1',       proc);
+    set('propietario', prop);
+    set('raza',        raza);
+    setSelect('especie', especie);
+    setSelect('sexo',    sexo);
+    if (fecha) set('fecha', fecha);
+
+    // ── Tab Verificación (checklist inicial — mismos datos) ──
+    set('cl_hc',       hc);
+    set('cl_proc',     proc);
+    set('cl_familia',  prop);
+    set('cl_raza',     raza);
+    setSelect('cl_especie', especie);
+    setSelect('cl_sexo',    sexo);
+
+    // ── Hora de inicio de anestesia (si viene el turno) ──
+    if (hora) {
+      // Convertir "8:30" → "08:30"
+      const horaFmt = hora.includes(':')
+        ? hora.split(':').map(p => p.padStart(2,'0')).join(':')
+        : hora;
+      set('h_inicio_anest', horaFmt);
+    }
+
+    // ── Si hay múltiples procedimientos separados por " / " ──
+    if (proc.includes(' / ')) {
+      const procs = proc.split(' / ').map(s => s.trim()).filter(Boolean);
+      set('proc1', procs[0]);
+      // Agregar filas extra para los siguientes procedimientos
+      procs.slice(1).forEach(pr => {
+        const btn = document.querySelector('#proc-list button');
+        if (btn) btn.click();
+        const inputs = document.querySelectorAll('#proc-list input[type=text]');
+        const last = inputs[inputs.length - 1];
+        if (last) { last.value = pr; last.dispatchEvent(new Event('input',{bubbles:true})); }
+      });
+    }
+  }, 300);
+})();
+
 // ---- REGISTRO DEL SERVICE WORKER ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
