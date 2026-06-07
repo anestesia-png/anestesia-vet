@@ -1,0 +1,38 @@
+{
+  "name": "Anestesia Vet – FCV UBA",
+  "short_name": "Anestesia Vet",
+  "description": "Ficha de Anestesia Veterinaria – Servicio de Anestesiología y Algiología, Facultad de Ciencias Veterinarias UBA",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a3a5c",
+  "theme_color": "#1a3a5c",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%231a3a5c' rx='32'/><text y='130' x='96' text-anchor='middle' font-size='100' font-family='sans-serif'>🩺</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%231a3a5c' rx='80'/><text y='360' x='256' text-anchor='middle' font-size='280' font-family='sans-serif'>🩺</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["medical", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Nueva Ficha",
+      "short_name": "Nueva",
+      "description": "Crear nueva ficha anestésica",
+      "url": "./index.html#verificacion"
+    },
+    {
+      "name": "Archivo",
+      "short_name": "Archivo",
+      "description": "Ver fichas guardadas",
+      "url": "./index.html#archivo"
+    }
+  ]
+}

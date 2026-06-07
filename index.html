@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Anestesia Vet">
 <meta name="theme-color" content="#1a3a5c">
 <title>Anestesia Vet – FCV UBA</title>
+<link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -393,9 +396,15 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <h1>🩺 Ficha de Anestesia Veterinaria</h1>
     <p>Servicio de Anestesiología y Algiología · FCV UBA</p>
   </div>
-  <div class="app-header-logo">
-    <div class="app-header-logo-text"><strong>.UBA</strong>VETERINARIA</div>
-    <span>Facultad de Ciencias Veterinarias</span>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+    <div class="app-header-logo">
+      <div class="app-header-logo-text"><strong>.UBA</strong>VETERINARIA</div>
+      <span>Facultad de Ciencias Veterinarias</span>
+    </div>
+    <div id="net-status" style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.85);background:rgba(0,0,0,.25);border-radius:20px;padding:3px 8px;transition:all .3s">
+      <span id="net-dot" style="width:7px;height:7px;border-radius:50%;background:#2ecc71;flex-shrink:0;transition:background .3s"></span>
+      <span id="net-label">Online</span>
+    </div>
   </div>
 </div>
 
@@ -3043,6 +3052,203 @@ function renderFichasList(fichas) {
 // ---- INIT ----
 document.getElementById('fecha').valueAsDate = new Date();
 actualizarGraficos();
+
+// ================================================================
+//  PWA — OFFLINE SUPPORT
+// ================================================================
+
+// ---- INDICADOR ONLINE / OFFLINE ----
+function updateNetStatus() {
+  const online  = navigator.onLine;
+  const dot     = document.getElementById('net-dot');
+  const label   = document.getElementById('net-label');
+  const status  = document.getElementById('net-status');
+  if (!dot) return;
+
+  if (online) {
+    dot.style.background   = '#2ecc71';
+    label.textContent      = 'Online';
+    status.style.background = 'rgba(0,0,0,.25)';
+    // Intentar sync de fichas pendientes
+    sincronizarPendientes();
+  } else {
+    dot.style.background   = '#e74c3c';
+    label.textContent      = 'Sin conexión';
+    status.style.background = 'rgba(192,57,43,.45)';
+  }
+}
+
+window.addEventListener('online',  updateNetStatus);
+window.addEventListener('offline', updateNetStatus);
+updateNetStatus();
+
+// ---- COLA DE SINCRONIZACIÓN OFFLINE ----
+const PENDING_KEY = 'fichas_pendientes_sync';
+
+function getPendientes() {
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch(e) { return []; }
+}
+function setPendientes(arr) {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); } catch(e) {}
+}
+
+// Guardar en cola offline cuando no hay conexión
+function encolarFichaOffline(data) {
+  const pendientes = getPendientes();
+  const ficha = { ...data, _offlineId: Date.now(), _pendiente: true };
+  pendientes.push(ficha);
+  setPendientes(pendientes);
+  return ficha._offlineId;
+}
+
+// Intentar sincronizar fichas pendientes
+async function sincronizarPendientes() {
+  const pendientes = getPendientes();
+  if (!pendientes.length) return;
+
+  const dot   = document.getElementById('net-dot');
+  const label = document.getElementById('net-label');
+  if (dot) { dot.style.background = '#f39c12'; label.textContent = `Sincronizando ${pendientes.length}…`; }
+
+  const exitosos = [];
+  for (const ficha of pendientes) {
+    try {
+      // Intentar Firebase
+      let fbOk = false;
+      if (window._fbReady) {
+        const id = await window._fbSaveFicha(ficha);
+        fbOk = !!id;
+      }
+      // Intentar Sheets
+      try {
+        await fetch(SHEETS_URL, {
+          method: 'POST', mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ficha)
+        });
+      } catch(e) { /* no-cors puede fallar silenciosamente */ }
+
+      if (fbOk || window._fbReady) exitosos.push(ficha._offlineId);
+    } catch(e) {
+      console.warn('[Sync] Falló sincronización de ficha:', e);
+    }
+  }
+
+  if (exitosos.length) {
+    const restantes = pendientes.filter(f => !exitosos.includes(f._offlineId));
+    setPendientes(restantes);
+    showToast(`✅ ${exitosos.length} ficha(s) sincronizada(s)`);
+  }
+
+  updateNetStatus();
+}
+
+// Reemplazar guardarYEnviar con versión offline-aware
+const _guardarOriginal = guardarYEnviar;
+window.guardarYEnviar = async function() {
+  const btn = document.getElementById('btn-guardar');
+  btn.textContent = '⏳ Guardando...';
+  btn.disabled = true;
+
+  const data = recopilarDatos();
+
+  // Guardar local siempre
+  try {
+    const registros = JSON.parse(localStorage.getItem('fichas_anest') || '[]');
+    data._localId = Date.now();
+    registros.push(data);
+    localStorage.setItem('fichas_anest', JSON.stringify(registros));
+  } catch(e) {}
+
+  if (!navigator.onLine) {
+    // Sin conexión → encolar para sync posterior
+    encolarFichaOffline(data);
+    showToast('💾 Sin conexión — ficha guardada localmente, se sincronizará al reconectar');
+    btn.textContent = '💾 Guardar';
+    btn.disabled = false;
+    return;
+  }
+
+  // Con conexión → flujo normal
+  let fbId = null;
+  if (window._fbReady) {
+    fbId = await window._fbSaveFicha(data);
+  }
+  try {
+    await fetch(SHEETS_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    showToast(fbId ? '✅ Ficha guardada en Firebase y Google Sheets' : '✅ Ficha guardada en Google Sheets');
+  } catch(e) {
+    showToast(fbId ? '✅ Ficha guardada en Firebase' : '💾 Guardado local OK (sin conexión)', !fbId);
+  }
+
+  btn.textContent = '💾 Guardar';
+  btn.disabled = false;
+};
+
+// Escuchar mensajes del Service Worker (sync en background)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data?.type === 'SYNC_PENDING') {
+      sincronizarPendientes();
+    }
+  });
+}
+
+// ---- REGISTRO DEL SERVICE WORKER ----
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        console.log('[PWA] Service Worker registrado:', reg.scope);
+
+        // Solicitar sync en background cuando vuelva la conexión
+        if ('SyncManager' in window) {
+          reg.sync?.register('sync-fichas').catch(() => {});
+        }
+
+        // Notificar si hay nueva versión disponible
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showToast('🔄 Nueva versión disponible — recargá para actualizar');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('[PWA] Error registrando SW:', err));
+  });
+}
+
+// ---- BANNER DE INSTALACIÓN PWA ----
+let _installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _installPrompt = e;
+  // Mostrar botón de instalación discreto
+  const bar = document.querySelector('.bottom-bar');
+  if (bar && !document.getElementById('btn-install')) {
+    const btn = document.createElement('button');
+    btn.id        = 'btn-install';
+    btn.className = 'btn';
+    btn.style     = 'background:#e8a020;color:#fff;flex:0 0 auto;padding:12px 14px;font-size:12px';
+    btn.textContent = '📲 Instalar';
+    btn.onclick   = async () => {
+      _installPrompt.prompt();
+      const { outcome } = await _installPrompt.userChoice;
+      if (outcome === 'accepted') {
+        btn.remove();
+        showToast('✅ App instalada correctamente');
+      }
+      _installPrompt = null;
+    };
+    bar.insertBefore(btn, bar.firstChild);
+  }
+});
 </script>
 </body>
 </html>
