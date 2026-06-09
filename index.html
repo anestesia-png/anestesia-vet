@@ -464,10 +464,6 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
   </div>
 
   <!-- Barra de progreso -->
-  <div style="text-align:right;margin-bottom:6px">
-    <button onclick="tildarTodo()" style="background:#e8ecf0;color:var(--muted);border:none;border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;opacity:.6">☑ Tildar todo (test)</button>
-  </div>
-
   <div class="cl-progress-wrap">
     <div class="cl-progress-label">
       <span>Progreso del Checklist</span>
@@ -2015,10 +2011,6 @@ function addProcRow() {
   div.querySelector('input').focus();
 }
 
-function tildarTodo() {
-  document.querySelectorAll('#tab-verificacion .cl-item input[type=checkbox]').forEach(cb => cb.checked = true);
-  clUpdate();
-}
 
 function toggleNeuroeje() {
   const espinal  = document.getElementById('blq_espinal')?.checked;
