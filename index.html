@@ -64,7 +64,8 @@
   --font:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;padding-bottom:80px}
+html{overscroll-behavior-y:contain}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;padding-bottom:80px;overscroll-behavior-y:contain}
 
 /* HEADER */
 .app-header{background:var(--navy);color:#fff;padding:12px 16px 8px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -278,6 +279,69 @@ textarea{resize:vertical;min-height:60px}
   transition: opacity .2s;
 }
 .pausa-modal-btn.ready { opacity: 1; pointer-events: all; }
+
+/* MODAL DE CONFIRMACIÓN GENÉRICO */
+#confirm-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,.6);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+}
+#confirm-modal.show { display: flex; }
+.confirm-modal-box {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  max-width: 340px;
+  width: 88%;
+  box-shadow: 0 8px 40px rgba(0,0,0,.3);
+  text-align: center;
+}
+.confirm-modal-icon {
+  font-size: 38px;
+  margin: 22px 0 6px;
+}
+.confirm-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  padding: 0 18px;
+  margin-bottom: 6px;
+}
+.confirm-modal-text {
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 0 20px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.confirm-modal-actions {
+  display: flex;
+  border-top: 1px solid var(--border);
+}
+.confirm-modal-actions button {
+  flex: 1;
+  border: none;
+  background: #fff;
+  padding: 14px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+}
+.confirm-modal-actions .cm-cancel {
+  color: var(--muted);
+  border-right: 1px solid var(--border);
+}
+.confirm-modal-actions .cm-ok {
+  color: var(--teal);
+}
+.confirm-modal-actions .cm-ok.danger {
+  color: var(--red);
+}
 /* CRI INTRAOP */
 .cri-wrap { display:flex; flex-direction:column; gap:3px; }
 .cri-times { display:none; gap:4px; margin-top:2px; }
@@ -1352,6 +1416,19 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
   </div>
 </div>
 
+<!-- MODAL DE CONFIRMACIÓN GENÉRICO -->
+<div id="confirm-modal">
+  <div class="confirm-modal-box">
+    <div class="confirm-modal-icon" id="cm-icon">❓</div>
+    <div class="confirm-modal-title" id="cm-title">¿Confirmar?</div>
+    <div class="confirm-modal-text" id="cm-text">¿Estás seguro?</div>
+    <div class="confirm-modal-actions">
+      <button class="cm-cancel" id="cm-cancel">Cancelar</button>
+      <button class="cm-ok" id="cm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <!-- BOTTOM BAR -->
 <div class="bottom-bar">
   <button class="btn btn-secondary" onclick="limpiarForm()">🗑 Nueva</button>
@@ -2151,6 +2228,37 @@ function showToast(msg, isError) {
   setTimeout(() => t.className = 'toast', 3000);
 }
 
+// ---- MODAL DE CONFIRMACIÓN GENÉRICO ----
+// Uso: confirmDialog({ icon, title, text, okText, danger }).then(ok => { if (ok) {...} })
+function confirmDialog({ icon = '❓', title = '¿Confirmar?', text = '¿Estás seguro?', okText = 'Confirmar', cancelText = 'Cancelar', danger = false } = {}) {
+  return new Promise(resolve => {
+    const modal  = document.getElementById('confirm-modal');
+    const btnOk  = document.getElementById('cm-ok');
+    const btnCancel = document.getElementById('cm-cancel');
+
+    document.getElementById('cm-icon').textContent  = icon;
+    document.getElementById('cm-title').textContent = title;
+    document.getElementById('cm-text').textContent  = text;
+    btnOk.textContent     = okText;
+    btnCancel.textContent = cancelText;
+    btnOk.classList.toggle('danger', danger);
+
+    modal.classList.add('show');
+
+    function cleanup(result) {
+      modal.classList.remove('show');
+      btnOk.removeEventListener('click', onOk);
+      btnCancel.removeEventListener('click', onCancel);
+      resolve(result);
+    }
+    function onOk()     { cleanup(true); }
+    function onCancel() { cleanup(false); }
+
+    btnOk.addEventListener('click', onOk);
+    btnCancel.addEventListener('click', onCancel);
+  });
+}
+
 // ---- RECOPILAR DATOS ----
 function recopilarDatos() {
   const d = {};
@@ -2274,6 +2382,18 @@ function recopilarDatos() {
   // Recopilar todos los parámetros del monitor (base + extras activos)
   const allParams = [...PARAMS_BASE, ...PARAMS_EXTRA];
   allParams.forEach(p => {
+    // Parámetros agrupados (ej. PAI invasiva: mon_pai_s / mon_pai_d / mon_pai_m)
+    if (p.type === 'group') {
+      (p.ids || []).forEach(subId => {
+        const vals = [];
+        for(let i = 0; i < COLS; i++) {
+          const el = document.getElementById(`${subId}_${i}`);
+          vals.push(el ? el.value : '');
+        }
+        d[subId] = vals.join('|');
+      });
+      return;
+    }
     const vals = [];
     for(let i = 0; i < COLS; i++) {
       const el = document.getElementById(`${p.id}_${i}`);
@@ -2281,6 +2401,20 @@ function recopilarDatos() {
     }
     d[p.id] = vals.join('|');
   });
+
+  // Filas de drogas TIVA agregadas dinámicamente al monitor
+  const tivaRows = [];
+  document.querySelectorAll('#monitor-body tr[id^="row-tiva-"]').forEach(tr => {
+    if (tr.id === 'row-tiva-add') return;
+    const label = tr.querySelector('td span')?.textContent?.trim() || tr.id.replace('row-tiva-','');
+    const vals = [];
+    for(let i = 0; i < COLS; i++) {
+      const el = document.getElementById(`${tr.id}_${i}`);
+      vals.push(el ? el.value : '');
+    }
+    tivaRows.push({ label, valores: vals.join('|') });
+  });
+  d['mon_tiva_rows'] = JSON.stringify(tivaRows);
 
   // Rescate analgésico (desde solapa dolor)
   d['rescate_analg'] = document.getElementById('rescate_analg')?.value ||
@@ -2651,36 +2785,117 @@ function renderGraficosEnModal(f) {
   const container = document.getElementById('pdf-graficos-container');
   container.innerHTML = '';
   const XLABELS_PDF = ['0','5','10','15','20','25','30','35','40','45','50','55','60','65','70','75','80','85','90','95','100','105','110','115','120','125','130','135','140','145','150','155','160','165','170','175','180'];
-  const params = [
-    { id: 'mon_fc',   label: 'FC (lpm)',       color: '#1a3a5c' },
-    { id: 'mon_fr',   label: 'FR (rpm)',        color: '#0d7a6e' },
-    { id: 'mon_spo2', label: 'SpO₂ (%)',        color: '#2980b9' },
-    { id: 'mon_etco2',label: 'ETCO₂',          color: '#8e44ad' },
-    { id: 'mon_tc',   label: 'Temp Central °C', color: '#e8a020' },
-    { id: 'mon_pas',  label: 'PAS',             color: '#c0392b' },
-  ];
-  params.forEach(p => {
-    const raw = f[p.id] || '';
-    const vals = raw.split('|').map(v => v === '' ? null : parseFloat(v));
-    if (vals.every(v => v === null)) return;
+
+  // Parsea un campo guardado "v0|v1|v2|..." a array de números (null si no es numérico)
+  function getSavedRow(id) {
+    const raw = f[id] || '';
+    const parts = raw.split('|');
+    return XLABELS_PDF.map((_, i) => {
+      const v = parts[i];
+      if (v === undefined || v === '') return null;
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    });
+  }
+
+  function crearCanvas(titulo, conLeyenda) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'background:#f8fafc;border-radius:8px;padding:8px';
     const h = document.createElement('div');
     h.style.cssText = 'font-size:10px;font-weight:700;color:var(--navy);margin-bottom:4px';
-    h.textContent = p.label;
+    h.textContent = titulo;
     const canvas = document.createElement('canvas');
-    canvas.style.cssText = 'width:100%;height:120px';
+    canvas.style.cssText = 'width:100%;height:' + (conLeyenda ? '140px' : '120px');
     wrap.appendChild(h); wrap.appendChild(canvas);
     container.appendChild(wrap);
+    return canvas;
+  }
+
+  // Gráfico de una sola serie
+  function addLineChart(id, label, color) {
+    const vals = getSavedRow(id);
+    if (vals.every(v => v === null)) return;
+    const canvas = crearCanvas(label, false);
     new Chart(canvas, {
       type: 'line',
-      data: { labels: XLABELS_PDF.slice(0, vals.length), datasets: [{ data: vals, borderColor: p.color, backgroundColor: p.color+'22', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: true }] },
+      data: { labels: XLABELS_PDF, datasets: [{ data: vals, borderColor: color, backgroundColor: color+'22', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: true }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 8 } } }, y: { ticks: { font: { size: 8 } } } } }
     });
-  });
-  if (!container.children.length) {
-    document.getElementById('pdf-graficos-wrap').style.display = 'none';
   }
+
+  // Gráfico de múltiples series (ej. PANI: PAS/PAD/PAM)
+  function addMultiChart(titulo, series) {
+    const datasets = series
+      .map(s => ({ ...s, data: getSavedRow(s.id) }))
+      .filter(s => s.data.some(v => v !== null));
+    if (!datasets.length) return;
+    const canvas = crearCanvas(titulo, true);
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: XLABELS_PDF,
+        datasets: datasets.map(s => ({
+          label: s.label, data: s.data, borderColor: s.color, backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: true
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { font: { size: 8 }, boxWidth: 10 } } }, scales: { x: { ticks: { font: { size: 8 } } }, y: { ticks: { font: { size: 8 } } } } }
+    });
+  }
+
+  // ---- Parámetros base ----
+  addLineChart('mon_fc',    'FC (lpm)',         '#1a3a5c');
+  addLineChart('mon_fr',    'FR (rpm)',          '#0d7a6e');
+  addLineChart('mon_spo2',  'SpO₂ (%)',          '#2980b9');
+  addLineChart('mon_etco2', 'ETCO₂',            '#8e44ad');
+  addLineChart('mon_tc',    'Temp Central (°C)', '#e8a020');
+
+  // ---- PANI (PAS/PAD/PAM) ----
+  addMultiChart('PANI (mmHg)', [
+    { id: 'mon_pas', label: 'PAS', color: '#c0392b' },
+    { id: 'mon_pad', label: 'PAD', color: '#2980b9' },
+    { id: 'mon_pam', label: 'PAM', color: '#27ae60' },
+  ]);
+
+  // ---- PAI invasiva (si fue agregada) ----
+  addMultiChart('PAI invasiva (mmHg)', [
+    { id: 'mon_pai_s', label: 'PAS', color: '#c0392b' },
+    { id: 'mon_pai_d', label: 'PAD', color: '#8e44ad' },
+    { id: 'mon_pai_m', label: 'PAM', color: '#d35400' },
+  ]);
+
+  // ---- Parámetros opcionales (si fueron agregados al monitor) ----
+  const extras = [
+    { id: 'mon_pvc',   label: 'P.V.C.' },
+    { id: 'mon_tp',    label: 'T° Periférica (°C)' },
+    { id: 'mon_orina', label: 'Prod. Orina' },
+    { id: 'mon_mm',    label: 'MM' },
+    { id: 'mon_tllc',  label: 'TLLC' },
+  ];
+  extras.forEach((p, i) => addLineChart(p.id, p.label, EXTRA_COLORS[i % EXTRA_COLORS.length]));
+
+  // ---- Drogas TIVA agregadas dinámicamente al monitor ----
+  try {
+    const tivaRows = JSON.parse(f.mon_tiva_rows || '[]');
+    tivaRows.forEach((row, idx) => {
+      const vals = (row.valores || '').split('|').map(v => {
+        if (v === '' || v === undefined) return null;
+        const n = parseFloat(v);
+        return isNaN(n) ? null : n;
+      });
+      while (vals.length < XLABELS_PDF.length) vals.push(null);
+      if (vals.every(v => v === null)) return;
+      const canvas = crearCanvas((row.label || 'Droga TIVA') + ' (TIVA)', false);
+      const color = EXTRA_COLORS[(extras.length + idx) % EXTRA_COLORS.length];
+      new Chart(canvas, {
+        type: 'line',
+        data: { labels: XLABELS_PDF, datasets: [{ data: vals, borderColor: color, backgroundColor: color+'22', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: true }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 8 } } }, y: { ticks: { font: { size: 8 } } } } }
+      });
+    });
+  } catch(e) { /* fichas viejas sin mon_tiva_rows */ }
+
+  document.getElementById('pdf-graficos-wrap').style.display = container.children.length ? '' : 'none';
 }
 
 function cerrarModal() {
@@ -2736,8 +2951,16 @@ document.addEventListener('fb-ready', () => {
 });
 
 // ---- LIMPIAR ----
-function limpiarForm() {
-  if (!confirm('¿Limpiar la ficha actual para un nuevo paciente?')) return;
+async function limpiarForm() {
+  const ok = await confirmDialog({
+    icon: '🗑',
+    title: '¿Limpiar la ficha?',
+    text: 'Se van a borrar todos los datos cargados para empezar con un nuevo paciente. Esta acción no se puede deshacer.',
+    okText: 'Sí, limpiar',
+    cancelText: 'Cancelar',
+    danger: true
+  });
+  if (!ok) return;
   document.querySelectorAll('input:not([type=radio]):not([type=checkbox]), select, textarea').forEach(el => el.value = '');
   document.querySelectorAll('input[type=radio], input[type=checkbox]').forEach(el => el.checked = false);
   scoreVal = null; asaVal = null;
@@ -2757,6 +2980,7 @@ function limpiarForm() {
   const otraTxt = document.getElementById('blq_otra_asist_txt');
   if (otraTxt) otraTxt.style.display = 'none';
   document.getElementById('fecha').valueAsDate = new Date();
+  _formDirty = false;
   showToast('🗑 Ficha limpiada');
 }
 
@@ -3048,6 +3272,27 @@ document.getElementById('fecha').valueAsDate = new Date();
 actualizarGraficos();
 
 // ================================================================
+//  PROTECCIÓN CONTRA PÉRDIDA DE DATOS (recarga / cierre accidental)
+// ================================================================
+let _formDirty = false;
+
+// Marca el formulario como "con cambios sin guardar" ante cualquier
+// interacción del usuario en los campos de la ficha.
+document.addEventListener('input',  () => { _formDirty = true; });
+document.addEventListener('change', () => { _formDirty = true; });
+
+// Aviso nativo del navegador al recargar / cerrar la pestaña / pull-to-refresh
+// (algunos navegadores móviles no muestran el texto, pero sí el diálogo de confirmación)
+window.addEventListener('beforeunload', function(e) {
+  if (!_formDirty) return;
+  e.preventDefault();
+  e.returnValue = '¿Estás seguro que querés salir? Hay datos sin guardar que se van a perder.';
+  return e.returnValue;
+});
+
+// Resetea el flag de "cambios sin guardar" al guardar correctamente
+
+// ================================================================
 //  PWA — OFFLINE SUPPORT
 // ================================================================
 
@@ -3139,7 +3384,7 @@ async function sincronizarPendientes() {
 
 // Reemplazar guardarYEnviar con versión offline-aware
 const _guardarOriginal = guardarYEnviar;
-window.guardarYEnviar = async function() {
+async function _guardarYEnviarReal() {
   const btn = document.getElementById('btn-guardar');
   btn.textContent = '⏳ Guardando...';
   btn.disabled = true;
@@ -3160,6 +3405,7 @@ window.guardarYEnviar = async function() {
     showToast('💾 Sin conexión — ficha guardada localmente, se sincronizará al reconectar');
     btn.textContent = '💾 Guardar';
     btn.disabled = false;
+    _formDirty = false;
     return;
   }
 
@@ -3181,6 +3427,20 @@ window.guardarYEnviar = async function() {
 
   btn.textContent = '💾 Guardar';
   btn.disabled = false;
+  _formDirty = false;
+}
+
+// Wrapper público: pide confirmación antes de guardar definitivamente
+window.guardarYEnviar = async function() {
+  const ok = await confirmDialog({
+    icon: '💾',
+    title: '¿Guardar esta ficha?',
+    text: 'Se va a guardar la ficha en Firebase y Google Sheets. Verificá que todos los datos estén completos antes de continuar.',
+    okText: 'Sí, guardar',
+    cancelText: 'Revisar de nuevo'
+  });
+  if (!ok) return;
+  await _guardarYEnviarReal();
 };
 
 // Escuchar mensajes del Service Worker (sync en background)
