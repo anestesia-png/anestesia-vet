@@ -3,8 +3,8 @@
 //  Estrategia: Cache-first para assets, Network-first para datos
 // ============================================================
 
-const CACHE_NAME = 'anestesia-vet-v2';
-const CACHE_STATIC = 'anestesia-vet-static-v2';
+const CACHE_NAME = 'anestesia-vet-v3';
+const CACHE_STATIC = 'anestesia-vet-static-v3';
 
 // Assets que se cachean en la instalación
 const STATIC_ASSETS = [
