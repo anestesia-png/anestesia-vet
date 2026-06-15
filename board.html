@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Board Semanal · Anestesiología FCV UBA</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#161b26;--bg3:#1e2536;--bg4:#252d42;
+  --border:#2d3752;--border2:#3d4f73;
+  --text:#e8eaf0;--text2:#9ba3c0;--text3:#5a6488;
+  --green:#1a9e6e;--green-bg:#0d2e20;--green-b:#1a4030;
+  --red:#d44c47;--red-bg:#2e1515;--red-b:#4a2020;
+  --amber:#e0922a;
+  font-family:'DM Sans',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);min-height:100vh}
+body{overflow-x:auto}
+
+.header{
+  background:linear-gradient(135deg,#0d1833 0%,#0f1117 100%);
+  border-bottom:1px solid var(--border);
+  padding:14px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px;
+}
+.header-left{display:flex;align-items:center;gap:14px}
+.logo{
+  background:#1a3a6e;border:1px solid #2a5aaa;
+  border-radius:8px;padding:6px 10px;
+  font-size:11px;font-weight:600;letter-spacing:.04em;color:#7ab3f0;
+}
+.header h1{font-size:15px;font-weight:500;color:var(--text)}
+.header h1 span{color:var(--text2);font-weight:300;font-size:13px;margin-left:6px}
+.nav-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nav-btn{
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--text2);font-size:12px;padding:5px 12px;border-radius:6px;
+  cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;
+}
+.nav-btn:hover{border-color:var(--border2);color:var(--text);background:var(--bg4)}
+
+.status-pill{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;padding:5px 12px;border-radius:6px;
+  font-family:'DM Sans',sans-serif;
+}
+.status-live{background:#0d2e20;border:1px solid #1a4030;color:#2dbd88}
+.status-loading{background:#1e1a08;border:1px solid #5a4a10;color:#e0c030}
+.status-error{background:var(--red-bg);border:1px solid var(--red-b);color:#e06060}
+.status-empty{background:var(--bg3);border:1px solid var(--border);color:var(--text3)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.status-dot.pulse{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.week-label{
+  text-align:center;padding:8px 20px;
+  font-size:11px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;
+  border-bottom:1px solid var(--border);background:var(--bg);
+}
+
+.summary-bar{
+  display:flex;gap:6px;padding:10px 20px;border-bottom:1px solid var(--border);
+  background:var(--bg);overflow-x:auto;
+}
+.summary-pill{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;
+  white-space:nowrap;
+}
+.sp-total{background:#1a2a4a;border:1px solid #2a4070;color:#7ab3f0}
+.sp-confirm{background:var(--green-bg);border:1px solid var(--green-b);color:#2dbd88}
+.sp-pending{background:var(--red-bg);border:1px solid var(--red-b);color:#e06060}
+.sp-sed{background:#1e1a2e;border:1px solid #3d3060;color:#9b80d4}
+.sp-grande{background:#2a1a08;border:1px solid #5a3810;color:var(--amber)}
+.sp-sync{background:var(--bg3);border:1px solid var(--border);color:var(--text3)}
+
+.board{
+  display:grid;
+  grid-template-columns:72px repeat(5,1fr);
+  min-width:900px;
+}
+.col-header{
+  background:var(--bg2);border-bottom:1px solid var(--border);border-right:1px solid var(--border);
+  padding:10px 8px;position:sticky;top:97px;z-index:50;
+}
+.col-header.time-col{background:var(--bg);border-right:2px solid var(--border2)}
+.day-name{font-size:12px;font-weight:600;color:var(--text);text-align:center;letter-spacing:.03em}
+.day-date{font-size:10px;color:var(--text3);text-align:center;margin-top:2px}
+.day-count{
+  display:inline-block;background:#1a2a4a;border:1px solid #2a4070;
+  color:#7ab3f0;font-size:10px;font-weight:600;
+  padding:1px 7px;border-radius:10px;margin-top:4px;
+  font-family:'DM Mono',monospace;
+}
+.today .col-header{background:#0d1e35;border-bottom:2px solid #3a70c0}
+.today .day-name{color:#7ab3f0}
+
+.time-label{
+  background:var(--bg);border-right:2px solid var(--border2);border-bottom:1px solid var(--border);
+  padding:8px 4px;
+  display:flex;align-items:flex-start;justify-content:center;
+  font-size:10px;font-weight:500;color:var(--text3);
+  font-family:'DM Mono',monospace;letter-spacing:.02em;
+  position:sticky;left:0;z-index:40;
+}
+.time-label.sed{color:#9b80d4;font-size:9px;font-style:italic}
+.cell{
+  border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:6px;min-height:120px;vertical-align:top;
+  background:var(--bg);
+  display:flex;flex-direction:column;gap:4px;
+  transition:background .1s;
+}
+.cell:hover{background:var(--bg2)}
+.notes-cell{
+  border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:6px;min-height:50px;
+  background:#0d1117;
+  display:flex;flex-direction:column;gap:4px;
+}
+.note-tag{
+  font-size:10px;padding:3px 8px;border-radius:4px;
+  background:#2e2a08;border:1px solid #5a4a10;color:#d4b030;
+  display:inline-block;
+}
+
+.card{
+  border-radius:6px;padding:7px 8px;
+  position:relative;cursor:pointer;
+  transition:transform .1s,box-shadow .1s;
+}
+.card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.card.confirmado{background:var(--green-bg);border:1px solid var(--green-b)}
+.card.pendiente{background:var(--red-bg);border:1px solid var(--red-b)}
+.card.sedacion{background:#1e1a2e;border:1px solid #3d3060}
+.card.desconocido{background:var(--bg3);border:1px solid var(--border)}
+
+.card-hc{
+  font-family:'DM Mono',monospace;font-size:11px;font-weight:500;
+  color:var(--text2);margin-bottom:3px;display:flex;align-items:center;gap:6px;
+}
+.card-hc .hc-num{font-size:12px;font-weight:600}
+.card-hc.confirmado .hc-num{color:#2dbd88}
+.card-hc.pendiente .hc-num{color:#e06060}
+.card-hc.sedacion .hc-num{color:#9b80d4}
+.card-hc.desconocido .hc-num{color:var(--text2)}
+
+.card-procedures{list-style:none;margin:2px 0}
+.card-procedures li{
+  font-size:10px;color:var(--text2);padding:1px 0;
+  display:flex;align-items:flex-start;gap:4px;
+}
+.card-procedures li::before{content:"·";color:var(--text3);flex-shrink:0}
+.anesthesia-tag{
+  display:inline-block;font-size:9px;font-weight:600;letter-spacing:.04em;
+  padding:1px 6px;border-radius:3px;margin-top:3px;text-transform:uppercase;
+}
+.at-grande{background:#2a1a08;border:1px solid #5a3810;color:var(--amber)}
+.at-mediano{background:#0d2028;border:1px solid #1a4058;color:#60b0d4}
+.at-chico{background:#1a1e2e;border:1px solid #2a3060;color:#8090d4}
+.at-braquicef{background:#1e1428;border:1px solid #3a2060;color:#c090d4}
+.at-sed{background:#1e1a2e;border:1px solid #3d3060;color:#9b80d4}
+.at-otro{background:var(--bg3);border:1px solid var(--border);color:var(--text3)}
+
+.status-badge{
+  position:absolute;top:5px;right:6px;
+  font-size:8px;font-weight:700;letter-spacing:.06em;
+  padding:1px 5px;border-radius:3px;text-transform:uppercase;
+}
+.sb-confirmado{background:#0d2e20;color:#2dbd88}
+.sb-pendiente{background:#2e1515;color:#e06060}
+.sb-sedacion{background:#1e1a2e;color:#9b80d4}
+.sb-desconocido{background:var(--bg4);color:var(--text3)}
+
+.card-obs{
+  font-size:9px;color:var(--text3);font-style:italic;
+  margin-top:2px;border-top:1px solid rgba(255,255,255,.05);padding-top:3px;
+}
+.abono-tag{font-size:9px;color:#1a9e6e;font-weight:500}
+
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+  z-index:1000;align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:12px;padding:24px;max-width:480px;width:90%;
+  max-height:85vh;overflow-y:auto;
+}
+.modal h3{font-size:16px;font-weight:500;margin-bottom:4px;color:var(--text)}
+.modal-sub{font-size:12px;color:var(--text2);margin-bottom:16px}
+.modal-section{margin-bottom:12px}
+.modal-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:4px}
+.modal-value{font-size:13px;color:var(--text)}
+.modal-close{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  font-size:12px;padding:6px 16px;border-radius:6px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;margin-top:12px;
+}
+.open-ficha{
+  background:#0d2e20;border:1px solid #1a4030;color:#2dbd88;
+  font-size:12px;padding:6px 16px;border-radius:6px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;margin-top:12px;margin-right:8px;
+}
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:300px;color:var(--text3);font-size:13px;text-align:center;gap:8px;padding:40px;
+}
+.empty-state code{
+  background:var(--bg3);padding:2px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;
+}
+
+@media (max-width: 700px) {
+  .header h1 { font-size: 13px; }
+  .header h1 span { display: block; margin-left: 0; }
+  .nav-btn { font-size: 11px; padding: 5px 8px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">FCV · UBA</div>
+    <div>
+      <h1>Board Quirúrgico <span>Anestesiología</span></h1>
+    </div>
+  </div>
+  <div class="nav-btns">
+    <button class="nav-btn" id="btnPrev" onclick="changeWeek(-1)">← Anterior</button>
+    <button class="nav-btn" id="btnToday" onclick="goToday()">Hoy</button>
+    <button class="nav-btn" id="btnNext" onclick="changeWeek(1)">Siguiente →</button>
+    <div class="status-pill status-loading" id="statusPill">
+      <div class="status-dot pulse"></div>
+      <span>Conectando…</span>
+    </div>
+  </div>
+</div>
+
+<div class="week-label" id="weekLabel">Cargando semana…</div>
+
+<div class="summary-bar" id="summaryBar"></div>
+
+<div id="boardContainer">
+  <div class="empty-state">Cargando datos desde Firebase…</div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB8ueEQsn7AaVuGpyr871lPOOcKD0vp5Hw",
+  authDomain: "anestesia-vet.firebaseapp.com",
+  projectId: "anestesia-vet",
+  storageBucket: "anestesia-vet.firebasestorage.app",
+  messagingSenderId: "1004040230160",
+  appId: "1:1004040230160:web:3e18eff4028d0eb5950195"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const DIAS_SEMANA = ["Lunes","Martes","Miércoles","Jueves","Viernes"];
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+let currentMonday = getMonday(new Date());
+let unsubscribe = null;
+
+function getMonday(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(date.getFullYear(), date.getMonth(), diff);
+}
+
+function formatKey(date) {
+  const d = String(date.getDate()).padStart(2,'0');
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const y = date.getFullYear();
+  return `${d}_${m}_${y}`;
+}
+
+function formatWeekLabel(date) {
+  const d0 = new Date(date);
+  const d4 = new Date(date); d4.setDate(d4.getDate()+4);
+  if (d0.getMonth() === d4.getMonth()) {
+    return `Semana del ${d0.getDate()} al ${d4.getDate()} de ${MESES[d0.getMonth()]} de ${d0.getFullYear()}`;
+  }
+  return `Semana del ${d0.getDate()} de ${MESES[d0.getMonth()]} al ${d4.getDate()} de ${MESES[d4.getMonth()]} de ${d4.getFullYear()}`;
+}
+
+function getAnesthesiaClass(a) {
+  const m = {GRANDE:'at-grande',MEDIANO:'at-mediano',CHICO:'at-chico',BRAQUICEF:'at-braquicef',SED:'at-sed'};
+  return m[a] || 'at-otro';
+}
+
+function setStatus(type, text) {
+  const pill = document.getElementById('statusPill');
+  pill.className = `status-pill status-${type}`;
+  const dotClass = type === 'loading' ? 'status-dot pulse' : 'status-dot';
+  pill.innerHTML = `<div class="${dotClass}"></div><span>${text}</span>`;
+}
+
+function buildSummary(data) {
+  const bar = document.getElementById('summaryBar');
+  if (!data || !data.turnos) {
+    bar.innerHTML = '';
+    return;
+  }
+  let total=0, conf=0, pend=0, sed=0, grande=0;
+  data.turnos.forEach(t => t.casos.forEach(c => {
+    total++;
+    if (c.estado === 'confirmado') conf++;
+    else if (c.estado === 'pendiente') pend++;
+    else if (c.estado === 'sedacion') sed++;
+    if (c.anestesia === 'GRANDE') grande++;
+  }));
+
+  let syncInfo = '';
+  if (data.sincronizado_en) {
+    const dt = new Date(data.sincronizado_en);
+    const horaStr = dt.toLocaleString('es-AR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+    syncInfo = `<span class="summary-pill sp-sync">Sync: ${horaStr}</span>`;
+  }
+
+  bar.innerHTML = `
+    <span class="summary-pill sp-total">${total} turnos</span>
+    <span class="summary-pill sp-confirm">Confirmados: ${conf}</span>
+    <span class="summary-pill sp-pending">A confirmar: ${pend}</span>
+    <span class="summary-pill sp-sed">Sedaciones: ${sed}</span>
+    <span class="summary-pill sp-grande">Anestesia GRANDE: ${grande}</span>
+    ${syncInfo}
+  `;
+}
+
+function buildBoard(data) {
+  const container = document.getElementById('boardContainer');
+
+  if (!data) {
+    container.innerHTML = `<div class="empty-state">
+      <div style="font-size:32px">📭</div>
+      <div>No hay datos sincronizados para esta semana.</div>
+      <div>Corré <code>python mussy_sync.py --fecha ${formatFechaArg(currentMonday)}</code> con VPN activa.</div>
+    </div>`;
+    return;
+  }
+
+  const dias = data.dias || [];
+  const turnos = data.turnos || [];
+  const today = new Date();
+
+  let html = '<div class="board">';
+
+  html += `<div class="col-header time-col"><div style="font-size:10px;color:var(--text3)">Turno</div></div>`;
+  for (let i = 0; i < 5; i++) {
+    const dayDate = new Date(currentMonday); dayDate.setDate(dayDate.getDate()+i);
+    const isToday = dayDate.toDateString() === today.toDateString();
+    const dInfo = dias[i] || {fecha: formatFechaShort(dayDate), count: 0};
+    html += `<div class="col-header${isToday?' today':''}">
+      <div class="day-name">${DIAS_SEMANA[i]}</div>
+      <div class="day-date">${dInfo.fecha}</div>
+      <div style="text-align:center"><span class="day-count">${dInfo.count}</span></div>
+    </div>`;
+  }
+
+  html += `<div class="time-label" style="font-size:9px">NOTAS</div>`;
+  for (let i = 0; i < 5; i++) {
+    const nota = dias[i] && dias[i].nota;
+    html += `<div class="notes-cell">${nota ? `<span class="note-tag">${escapeHtml(nota)}</span>` : '<span style="font-size:10px;color:var(--text3)">—</span>'}</div>`;
+  }
+
+  turnos.forEach(turno => {
+    html += `<div class="time-label${turno.sedacion?' sed':''}">
+      <div style="text-align:center">${turno.hora}<br>${turno.sedacion?'<span style="font-size:8px;opacity:.7">sed</span>':''}</div>
+    </div>`;
+    for (let di = 0; di < 5; di++) {
+      const casos = (turno.casos||[]).filter(c => c.dia === di);
+      html += `<div class="cell">`;
+      if (casos.length === 0) {
+        html += `<div style="height:20px"></div>`;
+      } else {
+        casos.forEach(c => {
+          const atClass = getAnesthesiaClass(c.anestesia);
+          const estado = c.estado || 'desconocido';
+          const procHtml = (c.procedimientos||[]).slice(0,2).map(p=>`<li>${escapeHtml(p)}</li>`).join('');
+          const obsShort = c.obs && c.obs.length > 0 && !/^\d+[:.]\d+$/.test(c.obs)
+            ? `<div class="card-obs">${escapeHtml(c.obs.substring(0,60))}${c.obs.length>60?'…':''}</div>` : '';
+          const icon = c.especie === 'Felino' ? '🐱' : (c.especie === 'No Tradicional' ? '🐦' : '🐕');
+          html += `<div class="card ${estado}" data-caso='${JSON.stringify(c).replace(/'/g,"&#39;")}' onclick="openCardFromEl(this)">
+            <div class="status-badge sb-${estado}">${estado.substring(0,4).toUpperCase()}</div>
+            <div class="card-hc ${estado}"><span class="hc-num">${escapeHtml(c.hc)}</span>${icon}</div>
+            ${c.abono?`<div class="abono-tag">● ${escapeHtml(c.abono)}</div>`:''}
+            <ul class="card-procedures">${procHtml}</ul>
+            <span class="anesthesia-tag ${atClass}">${c.anestesia}</span>
+            ${obsShort}
+          </div>`;
+        });
+      }
+      html += `</div>`;
+    }
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function formatFechaShort(date) {
+  const d = String(date.getDate()).padStart(2,'0');
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const y = String(date.getFullYear()).slice(-2);
+  return `${d}-${m}-${y}`;
+}
+function formatFechaArg(date) {
+  const d = String(date.getDate()).padStart(2,'0');
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const y = date.getFullYear();
+  return `${d}-${m}-${y}`;
+}
+
+window.openCardFromEl = function(el) {
+  const c = JSON.parse(el.getAttribute('data-caso').replace(/&#39;/g,"'"));
+  openCard(c);
+}
+
+window.openCard = function(c) {
+  document.getElementById('modal').innerHTML = `
+    <h3>HC ${escapeHtml(c.hc)} · ${escapeHtml(c.especie)} ${escapeHtml(c.raza)}</h3>
+    <div class="modal-sub">${escapeHtml(c.sexo)} · Propietario: ${escapeHtml(c.propietario)}</div>
+    <div class="modal-section">
+      <div class="modal-label">Procedimientos</div>
+      ${(c.procedimientos||[]).map(p=>`<div class="modal-value" style="margin-bottom:4px">· ${escapeHtml(p)}</div>`).join('')}
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">Anestesia</div>
+      <span class="anesthesia-tag ${getAnesthesiaClass(c.anestesia)}" style="font-size:11px">${c.anestesia}</span>
+    </div>
+    ${c.abono?`<div class="modal-section"><div class="modal-label">Pago</div><div class="modal-value" style="color:#1a9e6e">${escapeHtml(c.abono)}</div></div>`:''}
+    ${c.obs?`<div class="modal-section"><div class="modal-label">Observaciones</div><div class="modal-value" style="font-size:12px;color:var(--text2)">${escapeHtml(c.obs)}</div></div>`:''}
+    <div class="modal-section">
+      <div class="modal-label">Estado</div>
+      <div class="modal-value">${c.estado==='confirmado'?'Confirmado':c.estado==='pendiente'?'A confirmar':c.estado==='sedacion'?'Sedación':'Desconocido'}</div>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="open-ficha" onclick="openFicha('${c.hc}','${encodeURIComponent((c.procedimientos||[]).join(' / '))}','${encodeURIComponent(c.especie||'')}','${encodeURIComponent(c.raza||'')}','${encodeURIComponent(c.sexo||'')}','${encodeURIComponent(c.propietario||'')}','${c.hora||''}')">Abrir ficha de anestesia</button>
+      <button class="modal-close" onclick="closeModalDirect()">Cerrar</button>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+window.openFicha = function(hc, proc, especie, raza, sexo, prop, hora) {
+  const url = `./index.html?hc=${hc}&proc=${proc}&especie=${especie}&raza=${raza}&sexo=${sexo}&prop=${prop}${hora?`&hora=${hora}`:''}`;
+  window.open(url, '_blank');
+}
+window.closeModal = function(e) { if (e.target === document.getElementById('modalOverlay')) closeModalDirect(); }
+window.closeModalDirect = function() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+function subscribeToWeek() {
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+
+  document.getElementById('weekLabel').textContent = formatWeekLabel(currentMonday);
+  setStatus('loading', 'Conectando…');
+
+  const key = formatKey(currentMonday);
+  const ref = doc(db, 'turnos_semana', key);
+
+  unsubscribe = onSnapshot(ref,
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setStatus('live', 'En vivo');
+        buildSummary(data);
+        buildBoard(data);
+      } else {
+        setStatus('empty', 'Sin datos para esta semana');
+        buildSummary(null);
+        buildBoard(null);
+      }
+    },
+    (err) => {
+      console.error(err);
+      setStatus('error', 'Error de conexión');
+      buildSummary(null);
+      document.getElementById('boardContainer').innerHTML =
+        `<div class="empty-state"><div style="font-size:32px">⚠️</div><div>No se pudo conectar a Firebase.</div><div style="font-size:11px">${escapeHtml(err.message||'')}</div></div>`;
+    }
+  );
+}
+
+window.changeWeek = function(dir) {
+  currentMonday.setDate(currentMonday.getDate() + dir*7);
+  subscribeToWeek();
+}
+
+window.goToday = function() {
+  currentMonday = getMonday(new Date());
+  subscribeToWeek();
+}
+
+subscribeToWeek();
+</script>
+</body>
+</html>
