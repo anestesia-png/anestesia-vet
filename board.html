@@ -520,6 +520,147 @@ window.goToday = function() {
 }
 
 subscribeToWeek();
+
+// ---- INSTALACIÓN PWA ----
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showInstallBanner();
+});
+
+function showInstallBanner() {
+  if (localStorage.getItem('board_install_dismissed')) return;
+  const banner = document.getElementById('installBanner');
+  if (banner) {
+    banner.style.display = 'flex';
+    setTimeout(() => { banner.style.opacity = '1'; banner.style.transform = 'translateY(0)'; }, 100);
+  }
+}
+
+window.installApp = async function() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  hideBanner();
+}
+
+window.hideBanner = function() {
+  localStorage.setItem('board_install_dismissed', '1');
+  const banner = document.getElementById('installBanner');
+  if (banner) {
+    banner.style.opacity = '0';
+    banner.style.transform = 'translateY(20px)';
+    setTimeout(() => { banner.style.display = 'none'; }, 400);
+  }
+}
+
+window.addEventListener('appinstalled', () => { hideBanner(); });
+
+// ---- BANNER INSTALACIÓN IOS SAFARI ----
+(function() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+  const yaDismissed = localStorage.getItem('ios_board_banner_dismissed');
+
+  if (!isIOS || isStandalone || yaDismissed) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'ios-install-banner';
+  banner.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    left: 12px;
+    right: 12px;
+    background: #0d2e20;
+    color: #fff;
+    border: 1px solid #1a9e6e;
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    z-index: 9999;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    font-family: 'DM Sans', sans-serif;
+    animation: slideUp .35s ease;
+  `;
+
+  banner.innerHTML = `
+    <img src="icon-board-192.png" style="width:44px;height:44px;border-radius:10px;flex-shrink:0">
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:700;margin-bottom:5px;color:#2dbd88">Instalá el Board en tu iPhone</div>
+      <div style="font-size:12px;opacity:.85;line-height:1.6;color:#e8eaf0">
+        Tocá <span style="display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.15);border-radius:6px;padding:2px 7px;font-weight:600">
+          <svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 1v8M3 3.5L6 1l3 2.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="1" y="5" width="10" height="8" rx="1.5" stroke="#fff" stroke-width="1.5"/>
+          </svg>
+          Compartir
+        </span>
+        y luego <strong style="color:#2dbd88">"Agregar a pantalla de inicio"</strong>
+      </div>
+    </div>
+    <button id="ios-banner-close" style="
+      background:rgba(255,255,255,.12);border:none;color:#fff;
+      width:26px;height:26px;border-radius:50%;font-size:16px;
+      cursor:pointer;flex-shrink:0;display:flex;align-items:center;
+      justify-content:center;line-height:1;font-family:sans-serif
+    ">×</button>
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  setTimeout(() => {
+    document.body.appendChild(banner);
+    document.getElementById('ios-banner-close').addEventListener('click', () => {
+      banner.style.animation = 'none';
+      banner.style.opacity = '0';
+      banner.style.transition = 'opacity .25s';
+      setTimeout(() => banner.remove(), 250);
+      localStorage.setItem('ios_board_banner_dismissed', '1');
+    });
+  }, 3000);
+})();
 </script>
+
+<!-- Banner de instalación -->
+<div id="installBanner" style="
+  display:none;opacity:0;transform:translateY(20px);
+  transition:opacity .4s ease,transform .4s ease;
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  z-index:2000;
+  background:#1e2536;border:1px solid #3d4f73;border-radius:16px;
+  padding:16px 20px;
+  display:none;align-items:center;gap:14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  max-width:90vw;
+">
+  <img src="icon-board-192.png" style="width:48px;height:48px;border-radius:10px;flex-shrink:0">
+  <div style="flex:1;min-width:0">
+    <div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:2px">Board Quirúrgico · HEMV</div>
+    <div style="font-size:11px;color:#9ba3c0">Instalá la app para acceso rápido</div>
+  </div>
+  <button onclick="installApp()" style="
+    background:#0d2e20;border:1px solid #1a9e6e;color:#2dbd88;
+    font-size:12px;font-weight:600;padding:8px 16px;border-radius:8px;
+    cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;flex-shrink:0;
+  ">Instalar</button>
+  <button onclick="hideBanner()" style="
+    background:none;border:none;color:#5a6488;font-size:20px;
+    cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;
+  ">×</button>
+</div>
+
 </body>
 </html>
