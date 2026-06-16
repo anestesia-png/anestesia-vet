@@ -2270,6 +2270,7 @@ function recopilarDatos() {
   d['procedimientos'] = procs.join(' / ');
   // campos simples
   ['hc','propietario','nombre_pac','especie','raza','sexo','edad','peso',
+   'fecha','anestesiologo','cirujano','ayudante','tubo',
    'ayuno_s','ayuno_l','fc_pre','fr_pre','pulso_pre','spo2_pre','temp_pre',
    'pr_pre','mm_pre','tllc_pre','dht','pa_pre','compl_prev',
    'hto','gr','gb','plaq','urea','cr','pt','alb','glu','radio_estudio','eco',
@@ -2420,6 +2421,7 @@ function recopilarDatos() {
   d['rescate_analg'] = document.getElementById('rescate_analg')?.value ||
                        document.getElementById('rescate_analg_felino')?.value || '';
   d['asa'] = asaVal || '';
+  d['score_corporal'] = scoreVal || '';
   d['_timestamp'] = new Date().toISOString();
   return d;
 }
@@ -2786,60 +2788,75 @@ function renderGraficosEnModal(f) {
   container.innerHTML = '';
   const XLABELS_PDF = ['0','5','10','15','20','25','30','35','40','45','50','55','60','65','70','75','80','85','90','95','100','105','110','115','120','125','130','135','140','145','150','155','160','165','170','175','180'];
 
-  // Parsea un campo guardado "v0|v1|v2|..." a array de números (null si no es numérico)
   function getSavedRow(id) {
     const raw = f[id] || '';
+    if (!raw) return [];
     const parts = raw.split('|');
-    return XLABELS_PDF.map((_, i) => {
-      const v = parts[i];
+    return parts.map(v => {
       if (v === undefined || v === '') return null;
       const n = parseFloat(v);
       return isNaN(n) ? null : n;
     });
   }
 
+  // Recorta los nulos del final para no mostrar columnas vacías
+  function trimRow(arr) {
+    let last = arr.length - 1;
+    while (last >= 0 && arr[last] === null) last--;
+    return arr.slice(0, last + 1);
+  }
+
   function crearCanvas(titulo, conLeyenda) {
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'background:#f8fafc;border-radius:8px;padding:8px';
+    wrap.style.cssText = 'background:#f8fafc;border-radius:8px;padding:8px;margin-bottom:4px';
     const h = document.createElement('div');
-    h.style.cssText = 'font-size:10px;font-weight:700;color:var(--navy);margin-bottom:4px';
+    h.style.cssText = 'font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px';
     h.textContent = titulo;
     const canvas = document.createElement('canvas');
-    canvas.style.cssText = 'width:100%;height:' + (conLeyenda ? '140px' : '120px');
+    canvas.height = conLeyenda ? 140 : 120;
     wrap.appendChild(h); wrap.appendChild(canvas);
     container.appendChild(wrap);
     return canvas;
   }
 
-  // Gráfico de una sola serie
   function addLineChart(id, label, color) {
-    const vals = getSavedRow(id);
-    if (vals.every(v => v === null)) return;
+    const raw = getSavedRow(id);
+    const vals = trimRow(raw);
+    if (!vals.length || vals.every(v => v === null)) return;
+    const labels = XLABELS_PDF.slice(0, vals.length);
     const canvas = crearCanvas(label, false);
     new Chart(canvas, {
       type: 'line',
-      data: { labels: XLABELS_PDF, datasets: [{ data: vals, borderColor: color, backgroundColor: color+'22', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: true }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 8 } } }, y: { ticks: { font: { size: 8 } } } } }
+      data: { labels, datasets: [{ data: vals, borderColor: color, backgroundColor: color+'22', borderWidth: 2, pointRadius: 3, tension: 0.3, spanGaps: true }] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { font: { size: 8 }, maxTicksLimit: 15 } }, y: { ticks: { font: { size: 9 } } } }
+      }
     });
   }
 
-  // Gráfico de múltiples series (ej. PANI: PAS/PAD/PAM)
   function addMultiChart(titulo, series) {
-    const datasets = series
-      .map(s => ({ ...s, data: getSavedRow(s.id) }))
-      .filter(s => s.data.some(v => v !== null));
+    const rawData = series.map(s => ({ ...s, vals: trimRow(getSavedRow(s.id)) }));
+    const maxLen = Math.max(...rawData.map(s => s.vals.length), 0);
+    if (!maxLen) return;
+    const labels = XLABELS_PDF.slice(0, maxLen);
+    const datasets = rawData
+      .filter(s => s.vals.some(v => v !== null))
+      .map(s => ({
+        label: s.label,
+        data: s.vals.concat(Array(maxLen - s.vals.length).fill(null)),
+        borderColor: s.color, backgroundColor: 'transparent',
+        borderWidth: 2, pointRadius: 3, tension: 0.3, spanGaps: true
+      }));
     if (!datasets.length) return;
     const canvas = crearCanvas(titulo, true);
     new Chart(canvas, {
       type: 'line',
-      data: {
-        labels: XLABELS_PDF,
-        datasets: datasets.map(s => ({
-          label: s.label, data: s.data, borderColor: s.color, backgroundColor: 'transparent',
-          borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: true
-        }))
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { font: { size: 8 }, boxWidth: 10 } } }, scales: { x: { ticks: { font: { size: 8 } } }, y: { ticks: { font: { size: 8 } } } } }
+      data: { labels, datasets },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { font: { size: 9 }, boxWidth: 12 } } },
+        scales: { x: { ticks: { font: { size: 8 }, maxTicksLimit: 15 } }, y: { ticks: { font: { size: 9 } } } }
+      }
     });
   }
 
