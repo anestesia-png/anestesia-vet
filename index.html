@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyB8ueEQsn7AaVuGpyr871lPOOcKD0vp5Hw",
@@ -49,6 +49,16 @@
     } catch(e) {
       console.error('Firebase error:', e);
       return [];
+    }
+  };
+
+  window._fbUpdateFicha = async function(id, data) {
+    try {
+      await setDoc(doc(db, 'fichas', id), data, { merge: true });
+      return true;
+    } catch(e) {
+      console.error('Firebase update error:', e);
+      return false;
     }
   };
 
@@ -440,6 +450,7 @@ textarea{resize:vertical;min-height:60px}
 .btn{flex:1;padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--font)}
 .btn-primary{background:var(--teal);color:#fff}
 .btn-secondary{background:var(--navy);color:#fff}
+.btn-finalizar{background:#2e7d32;color:#fff;flex:1}
 .btn-danger{background:var(--red);color:#fff}
 
 /* TOAST */
@@ -984,7 +995,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
 <div id="tab-recuperacion" class="page">
 
   <div class="section">
-    <div class="section-title teal">Antagonistas</div>
+    <div class="section-title teal">Antagonistas / Drogas Post-Quirúrgicas</div>
     <div class="section-body">
       <div class="tbl-wrap">
         <table class="drug-table"><thead><tr><th>Droga</th><th>Dosis</th><th>Vía</th><th>Hora</th><th></th></tr></thead>
@@ -1433,6 +1444,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
 <div class="bottom-bar">
   <button class="btn btn-secondary" onclick="limpiarForm()">🗑 Nueva</button>
   <button class="btn btn-primary" id="btn-guardar" onclick="guardarYEnviar()">💾 Guardar</button>
+  <button class="btn btn-finalizar" id="btn-finalizar" onclick="finalizarFicha()">✅ Finalizar</button>
 </div>
 
 <!-- CALCULADORA FLOTANTE -->
@@ -1909,7 +1921,7 @@ const DROGAS = {
   'mpa-body': ['Acepromacina','Buprenorfina','Butorfanol','Dexmedetomidina','Fentanilo','Ketamina','Medetomidina','Meloxicam','Remifentanilo','Robenacoxib'],
   'ind-body': ['Etomidato','Isofluorano','Ketamina','Midazolam','Propofol','Sevofluorano','Tiopental'],
   'loc-body': ['Bupivacaína','Dexmedetomidina','Lidocaína','Medetomidina','Triamcinolona'],
-  'antag-body': ['Atipamezol','Flumazenil','Naloxona','Neostigmina','Yohimbina'],
+  'antag-body': ['Acepromacina','Atipamezol','Dexametasona','Dipirona','Flumazenil','Maropitant','Meloxicam','Metoclopramida','Morfina','Naloxona','Neostigmina','Paracetamol','Robenacoxib','Tramadol','Yohimbina'],
   'intraop-body': ['Amiodarona','Dobutamina','Dopamina','Fentanilo','Isoproterenol','Ketamina','Labetalol','Lidocaína','Noradrenalina','Remifentanilo'],
 };
 
@@ -2998,6 +3010,7 @@ async function limpiarForm() {
   if (otraTxt) otraTxt.style.display = 'none';
   document.getElementById('fecha').valueAsDate = new Date();
   _formDirty = false;
+  _fichaActualId = null;
   showToast('🗑 Ficha limpiada');
 }
 
@@ -3399,65 +3412,112 @@ async function sincronizarPendientes() {
   updateNetStatus();
 }
 
-// Reemplazar guardarYEnviar con versión offline-aware
-const _guardarOriginal = guardarYEnviar;
-async function _guardarYEnviarReal() {
+// ID de la ficha actual en edición (para actualizar en lugar de duplicar)
+let _fichaActualId = null;
+
+// GUARDAR — sin confirmación, actualiza si ya existe
+window.guardarYEnviar = async function() {
   const btn = document.getElementById('btn-guardar');
   btn.textContent = '⏳ Guardando...';
   btn.disabled = true;
 
   const data = recopilarDatos();
+  data._finalizada = false;
 
-  // Guardar local siempre
+  // Guardar/actualizar en localStorage
   try {
-    const registros = JSON.parse(localStorage.getItem('fichas_anest') || '[]');
-    data._localId = Date.now();
-    registros.push(data);
+    let registros = JSON.parse(localStorage.getItem('fichas_anest') || '[]');
+    if (_fichaActualId) {
+      const idx = registros.findIndex(r => r._localId === _fichaActualId);
+      if (idx >= 0) registros[idx] = { ...data, _localId: _fichaActualId };
+      else { data._localId = _fichaActualId; registros.push(data); }
+    } else {
+      _fichaActualId = Date.now();
+      data._localId = _fichaActualId;
+      registros.push(data);
+    }
     localStorage.setItem('fichas_anest', JSON.stringify(registros));
   } catch(e) {}
 
   if (!navigator.onLine) {
-    // Sin conexión → encolar para sync posterior
     encolarFichaOffline(data);
-    showToast('💾 Sin conexión — ficha guardada localmente, se sincronizará al reconectar');
+    showToast('💾 Sin conexión — guardado localmente');
     btn.textContent = '💾 Guardar';
     btn.disabled = false;
     _formDirty = false;
     return;
   }
 
-  // Con conexión → flujo normal
-  let fbId = null;
+  // Firebase: actualizar si ya existe, crear si no
   if (window._fbReady) {
-    fbId = await window._fbSaveFicha(data);
+    if (_fichaActualId && typeof _fichaActualId === 'string') {
+      await window._fbUpdateFicha(_fichaActualId, data);
+    } else {
+      const fbId = await window._fbSaveFicha(data);
+      if (fbId) _fichaActualId = fbId;
+    }
   }
+
   try {
     await fetch(SHEETS_URL, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    showToast(fbId ? '✅ Ficha guardada en Firebase y Google Sheets' : '✅ Ficha guardada en Google Sheets');
-  } catch(e) {
-    showToast(fbId ? '✅ Ficha guardada en Firebase' : '💾 Guardado local OK (sin conexión)', !fbId);
-  }
+  } catch(e) {}
 
+  showToast('💾 Ficha guardada — podés seguir cargando');
   btn.textContent = '💾 Guardar';
   btn.disabled = false;
   _formDirty = false;
-}
+};
 
-// Wrapper público: pide confirmación antes de guardar definitivamente
-window.guardarYEnviar = async function() {
+// FINALIZAR — confirma y archiva la ficha
+window.finalizarFicha = async function() {
   const ok = await confirmDialog({
-    icon: '💾',
-    title: '¿Guardar esta ficha?',
-    text: 'Se va a guardar la ficha en Firebase y Google Sheets. Verificá que todos los datos estén completos antes de continuar.',
-    okText: 'Sí, guardar',
-    cancelText: 'Revisar de nuevo'
+    icon: '✅',
+    title: '¿Finalizar y archivar la ficha?',
+    text: 'La ficha quedará archivada. Aún podrás consultarla en el Archivo pero no se podrá editar.',
+    okText: 'Sí, finalizar',
+    cancelText: 'Seguir cargando'
   });
   if (!ok) return;
-  await _guardarYEnviarReal();
+
+  const btnF = document.getElementById('btn-finalizar');
+  btnF.textContent = '⏳ Finalizando...';
+  btnF.disabled = true;
+
+  const data = recopilarDatos();
+  data._finalizada = true;
+  data._fechaFinalizacion = new Date().toISOString();
+
+  // Guardar en Firebase
+  let fbId = null;
+  if (window._fbReady) {
+    if (_fichaActualId && typeof _fichaActualId === 'string') {
+      await window._fbUpdateFicha(_fichaActualId, data);
+      fbId = _fichaActualId;
+    } else {
+      fbId = await window._fbSaveFicha(data);
+      if (fbId) _fichaActualId = fbId;
+    }
+  }
+
+  try {
+    await fetch(SHEETS_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+  } catch(e) {}
+
+  showToast('✅ Ficha finalizada y archivada');
+  btnF.textContent = '✅ Finalizar';
+  btnF.disabled = false;
+  _formDirty = false;
+
+  // Resetear ID para próxima ficha
+  _fichaActualId = null;
 };
 
 // Escuchar mensajes del Service Worker (sync en background)
