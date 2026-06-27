@@ -184,6 +184,11 @@ textarea{resize:vertical;min-height:60px}
 .cl-ready-banner span{font-size:18px;font-weight:700;color:var(--teal);letter-spacing:1px}
 .cl-block-warn{display:none;background:#fff3cd;border:1.5px solid #e8a020;border-radius:8px;padding:10px 14px;font-size:12px;color:#7a5200;margin-bottom:10px}
 .cl-block-warn.show{display:block}
+/* BLOQUEO BLOCK */
+.bloqueo-block{background:#f8fafc;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px;position:relative}
+.bloqueo-block-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.bloqueo-block-num{font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.6px}
+.bloqueo-block-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:0;line-height:1}
 /* PAUSA QUIRÚRGICA EN MONITOR */
 .pausa-monitor-row td { padding: 0 !important; }
 .pausa-monitor-cell {
@@ -854,48 +859,6 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
         </div>
       </div>
 
-      <div class="row">
-        <div class="field full"><label>Bloqueo</label>
-          <select id="bloqueo_nombre" onchange="toggleBloqueoOtro(this)" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;font-family:var(--font);background:var(--input-bg)">
-            <option value="">— Seleccionar —</option>
-            <option>Auricular mayor</option>
-            <option>Auriculotemporal</option>
-            <option>Bloqueo de Bier</option>
-            <option>Bloqueo en anillo</option>
-            <option>Bloqueo en línea / Incisional</option>
-            <option>Ciático</option>
-            <option>ESP</option>
-            <option>Extraconal</option>
-            <option>Femoral</option>
-            <option>Genitofemoral</option>
-            <option>GIN</option>
-            <option>Infraorbitario</option>
-            <option>Intercostal</option>
-            <option>Intraconal</option>
-            <option>Intratesticular</option>
-            <option>Mandibular</option>
-            <option>Maxilar</option>
-            <option>Paravertebral cervical</option>
-            <option>Paravertebral torácico</option>
-            <option>Plano del serrato</option>
-            <option>Plano fascial pecto-intercostal</option>
-            <option>Plexo braquial (axilar)</option>
-            <option>Plexo braquial (subescalénico)</option>
-            <option>Pudendo</option>
-            <option>QLB</option>
-            <option>QLB Caudal</option>
-            <option>Retromamilar</option>
-            <option>RUMM distal</option>
-            <option>RUMM proximal</option>
-            <option>Safeno</option>
-            <option>TAP</option>
-            <option>Vaina del recto</option>
-            <option value="__otro__">Otro...</option>
-          </select>
-          <input type="text" id="bloqueo_nombre_otro" placeholder="Especificar bloqueo..." style="display:none;margin-top:6px;width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;font-family:var(--font)">
-        </div>
-      </div>
-
       <!-- Campos neuroeje — solo para Espinal / Peridural -->
       <div id="neuroeje-fields" style="display:none">
         <div class="row">
@@ -914,15 +877,10 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
         </div>
       </div>
 
-      <div class="row">
-        <div class="field full"><label>Abordaje</label><input type="text" id="abordaje_loc"></div>
-      </div>
+      <!-- Lista dinámica de bloqueos -->
+      <div id="bloqueos-lista"></div>
+      <button class="add-row-btn" onclick="addBloqueoBlock()" style="width:100%;justify-content:center;margin-top:8px">+ Agregar bloqueo</button>
 
-      <div class="tbl-wrap">
-        <table class="drug-table"><thead><tr><th>Droga</th><th>Concentración / Dosis</th><th>Volumen total administrado</th><th>Hora</th><th></th></tr></thead>
-        <tbody id="loc-body"></tbody></table>
-      </div>
-      <button class="add-row-btn" onclick="addLocRow()">+ Agregar</button>
     </div>
   </div>
 
@@ -2101,6 +2059,120 @@ function addProcRow() {
 }
 
 
+// ---- BLOQUEOS DINÁMICOS ----
+const BLOQUEOS_LISTA = ['Auricular mayor','Auriculotemporal','Bloqueo de Bier','Bloqueo en anillo','Bloqueo en línea / Incisional','Ciático','ESP','Extraconal','Femoral','Genitofemoral','GIN','Infraorbitario','Intercostal','Intraconal','Intratesticular','Mandibular','Maxilar','Paravertebral cervical','Paravertebral torácico','Plano del serrato','Plano fascial pecto-intercostal','Plexo braquial (axilar)','Plexo braquial (subescalénico)','Pudendo','QLB','QLB Caudal','Retromamilar','RUMM distal','RUMM proximal','Safeno','TAP','Vaina del recto'];
+let _bloqueoCount = 0;
+
+function addBloqueoBlock() {
+  _bloqueoCount++;
+  const idx = _bloqueoCount;
+  const tbodyId = 'loc-body-' + idx;
+  const container = document.getElementById('bloqueos-lista');
+
+  const block = document.createElement('div');
+  block.className = 'bloqueo-block';
+  block.id = 'bloqueo-block-' + idx;
+
+  const blqOpts = BLOQUEOS_LISTA.map(b => `<option value="${b}">${b}</option>`).join('') + '<option value="__otro__">Otro...</option>';
+  const concOpts = ['2%','1%','0.75%','0.5%','0.25%','0.125%','μg/kg','μg/mL','mg/kg','mg/mL','Otra...'].map(o => `<option value="${o}">${o}</option>`).join('');
+
+  block.innerHTML = `
+    <div class="bloqueo-block-header">
+      <span class="bloqueo-block-num">Bloqueo ${idx}</span>
+      <button type="button" class="bloqueo-block-del" onclick="document.getElementById('bloqueo-block-${idx}').remove()">×</button>
+    </div>
+    <div class="row" style="margin-bottom:6px">
+      <div class="field full">
+        <label>Bloqueo</label>
+        <select onchange="toggleBloqueoOtroBlock(this)" style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;font-family:var(--font);background:var(--input-bg)">
+          <option value="">— Seleccionar —</option>${blqOpts}
+        </select>
+        <input type="text" class="bloqueo-otro-inp" placeholder="Especificar bloqueo..." style="display:none;margin-top:6px;width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;font-family:var(--font)">
+      </div>
+    </div>
+    <div class="row" style="margin-bottom:6px">
+      <div class="field full"><label>Abordaje</label><input type="text" placeholder="Abordaje" style="width:100%"></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="drug-table"><thead><tr><th>Droga</th><th>Concentración / Dosis</th><th>Vol. total admin.</th><th>Hora</th><th></th></tr></thead>
+      <tbody id="${tbodyId}"></tbody></table>
+    </div>
+    <button class="add-row-btn" onclick="addLocRowTo('${tbodyId}')">+ Droga</button>`;
+
+  container.appendChild(block);
+  addLocRowTo(tbodyId);
+}
+
+function toggleBloqueoOtroBlock(sel) {
+  const inp = sel.nextElementSibling;
+  inp.style.display = sel.value === '__otro__' ? '' : 'none';
+  if (sel.value === '__otro__') inp.focus();
+}
+
+function addLocRowTo(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  const lista = DROGAS['loc-body'] || [];
+  const drugOpts = lista.map(d => `<option value="${d}">${d}</option>`).join('') + '<option value="__otra__">✏️ Otra...</option>';
+  const concOpts = ['— conc/dosis —','2%','1%','0.75%','0.5%','0.25%','0.125%','μg/kg','μg/mL','mg/kg','mg/mL','Otra...'].map(o => `<option>${o}</option>`).join('');
+
+  const td1 = document.createElement('td');
+  const ds = document.createElement('select'); ds.className = 'drug-select';
+  ds.innerHTML = '<option value="">— Seleccionar —</option>' + drugOpts;
+  ds.addEventListener('change', function() { toggleOtra(this); });
+  const di = document.createElement('input'); di.type='text'; di.className='otra-input'; di.placeholder='Escribir nombre...';
+  td1.appendChild(ds); td1.appendChild(di);
+
+  const td2 = document.createElement('td');
+  const cs = document.createElement('select');
+  cs.style.cssText = 'width:100%;border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font)';
+  cs.innerHTML = concOpts;
+  const ci = document.createElement('input'); ci.type='text'; ci.className='otra-input'; ci.placeholder='Especificar...'; ci.style.display='none'; ci.style.marginTop='3px';
+  cs.addEventListener('change', function() {
+    if(this.value==='Otra...'){
+      ci.style.display='block';
+      ci.focus();
+    } else {
+      ci.style.display='none';
+      ci.value='';
+    }
+  });
+  td2.appendChild(cs); td2.appendChild(ci);
+
+  const td3 = document.createElement('td');
+  const vi = document.createElement('input'); vi.type='text'; vi.placeholder='mL';
+  td3.appendChild(vi);
+
+  const td4 = document.createElement('td');
+  const hi = document.createElement('input'); hi.type='time';
+  td4.appendChild(hi);
+
+  const td5 = document.createElement('td');
+  const btn = document.createElement('button'); btn.type='button'; btn.textContent='×';
+  btn.style.cssText='background:none;border:none;color:var(--red);cursor:pointer;font-size:16px';
+  btn.addEventListener('click', () => tr.remove());
+  td5.appendChild(btn);
+
+  tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
+  tbody.appendChild(tr);
+}
+
+function leerBloqueos() {
+  const blocks = document.querySelectorAll('.bloqueo-block');
+  const result = [];
+  blocks.forEach((block, i) => {
+    const sel = block.querySelector('select');
+    const otraInp = block.querySelector('.bloqueo-otro-inp');
+    const nombre = sel?.value === '__otro__' ? (otraInp?.value || 'Otro') : (sel?.value || '');
+    const abordaje = block.querySelectorAll('input[type=text]')[0]?.value || '';
+    const tbody = block.querySelector('tbody');
+    const drogas = tbody ? leerTablaDrogas(tbody.id) : '';
+    result.push({ nombre, abordaje, drogas });
+  });
+  return result;
+}
+
 function toggleNeuroeje() {
   const espinal  = document.getElementById('blq_espinal')?.checked;
   const epidural = document.getElementById('blq_epidural')?.checked;
@@ -2311,10 +2383,10 @@ function recopilarDatos() {
   d['bloqueo_regional'] = blqs.join(', ') || 'Sin datos';
 
   // bloqueo nombre
-  const blqNomSel = document.getElementById('bloqueo_nombre');
-  d['bloqueo_nombre'] = blqNomSel?.value === '__otro__'
-    ? (document.getElementById('bloqueo_nombre_otro')?.value || 'Otro')
-    : (blqNomSel?.value || '');
+  // bloqueos dinámicos
+  const bloqueos = leerBloqueos();
+  d['bloqueos_json'] = JSON.stringify(bloqueos);
+  d['bloqueo_nombre'] = bloqueos.map(b => b.nombre).filter(Boolean).join(' / ');
 
   // abordaje neuroeje
   const neuroSel = document.getElementById('abordaje_neuroeje');
@@ -2377,7 +2449,7 @@ function recopilarDatos() {
   }
   d['antagonistas'] = leerTablaDrogas('antag-body');
   d['drogas_induccion']= leerTablaDrogas('ind-body');
-  d['drogas_regional'] = leerTablaDrogas('loc-body');
+  d['drogas_regional'] = bloqueos.map((b,i) => `[${i+1}] ${b.nombre}: ${b.drogas}`).filter(b => b.includes(':')).join(' || ');
   d['drogas_intraop']  = leerTablaDrogas('intraop-body');
 
   // complicaciones
@@ -3011,6 +3083,11 @@ async function limpiarForm() {
   document.getElementById('fecha').valueAsDate = new Date();
   _formDirty = false;
   _fichaActualId = null;
+  // Reset bloqueos
+  const bloqueosList = document.getElementById('bloqueos-lista');
+  if (bloqueosList) bloqueosList.innerHTML = '';
+  _bloqueoCount = 0;
+  limpiarBorrador();
   showToast('🗑 Ficha limpiada');
 }
 
@@ -3033,6 +3110,24 @@ function makeChart(canvasId, label, data, color, datasets) {
   if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
   const ctx = document.getElementById(canvasId)?.getContext('2d');
   if (!ctx) return;
+
+  // Calcular escala Y inteligente con padding del 15%
+  function calcYScale(allData) {
+    const vals = allData.flat().filter(v => v !== null && v !== undefined && !isNaN(v));
+    if (!vals.length) return {};
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const range = max - min || 10;
+    const pad = range * 0.20;
+    const step = range <= 20 ? 2 : range <= 50 ? 5 : range <= 100 ? 10 : range <= 200 ? 20 : 25;
+    const yMin = Math.floor((min - pad) / step) * step;
+    const yMax = Math.ceil((max + pad) / step) * step;
+    return { min: yMin, max: yMax, ticks: { stepSize: step, font: { size: 11 } } };
+  }
+
+  const allVals = datasets ? datasets.map(d => d.data || []) : [data || []];
+  const yScale = calcYScale(allVals);
+
   chartInstances[canvasId] = new Chart(ctx, {
     type: 'line',
     data: {
@@ -3048,7 +3143,7 @@ function makeChart(canvasId, label, data, color, datasets) {
       plugins: { legend: { display: datasets ? true : false, labels: { font: { size: 11 } } } },
       scales: {
         x: { title: { display: true, text: 'min', font: { size: 10 } }, grid: { color: '#eee' } },
-        y: { grid: { color: '#eee' }, ticks: { font: { size: 11 } } }
+        y: { ...yScale, grid: { color: '#eee' } }
       }
     }
   });
@@ -3300,6 +3395,103 @@ function renderFichasList(fichas) {
 // ---- INIT ----
 document.getElementById('fecha').valueAsDate = new Date();
 actualizarGraficos();
+
+// ================================================================
+//  AUTOGUARDADO Y RECUPERACIÓN DE BORRADOR
+// ================================================================
+
+const DRAFT_KEY = 'ficha_borrador';
+
+function autoguardarBorrador() {
+  // Solo si hay algo cargado (nombre paciente o HC)
+  const pac = document.getElementById('cl_paciente')?.value || document.getElementById('nombre_pac')?.value || '';
+  const hc  = document.getElementById('cl_hc')?.value || document.getElementById('hc')?.value || '';
+  if (!pac && !hc) return;
+  if (_fichaActualId) return; // ya fue guardada en Firebase, no hace falta borrador
+
+  try {
+    const data = recopilarDatos();
+    data._draft = true;
+    data._draftTs = new Date().toISOString();
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  } catch(e) {}
+}
+
+function limpiarBorrador() {
+  localStorage.removeItem(DRAFT_KEY);
+}
+
+function recuperarBorrador() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (!data._draft) return;
+
+    const ts = data._draftTs ? new Date(data._draftTs).toLocaleString('es-AR') : 'hora desconocida';
+    const pac = data.nombre_pac || data.cl_paciente || 'sin nombre';
+
+    confirmDialog({
+      icon: '💾',
+      title: 'Borrador encontrado',
+      text: `Hay una ficha sin finalizar de "${pac}" guardada el ${ts}. ¿Querés recuperarla?`,
+      okText: 'Sí, recuperar',
+      cancelText: 'Descartar'
+    }).then(ok => {
+      if (!ok) { limpiarBorrador(); return; }
+      cargarDatosEnFormulario(data);
+      showToast('✅ Borrador recuperado');
+    });
+  } catch(e) {}
+}
+
+function cargarDatosEnFormulario(data) {
+  // Campos simples
+  const camposSimples = ['hc','propietario','nombre_pac','especie','raza','sexo','edad','peso',
+    'fecha','anestesiologo','cirujano','ayudante','tubo',
+    'ayuno_s','ayuno_l','fc_pre','fr_pre','pulso_pre','spo2_pre','temp_pre',
+    'pr_pre','mm_pre','tllc_pre','dht','pa_pre','compl_prev',
+    'hto','gr','gb','plaq','urea','cr','pt','alb','glu',
+    'patologias','abordaje_loc',
+    'h_inicio_anest','h_inicio_cx','h_fin_cx','h_fin_anest',
+    'fc_rec','fr_rec','spo2_rec','temp_rec','h_extubacion',
+    'comentarios','indicaciones_post','destino_post','firma_nombre'];
+  camposSimples.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && data[id] !== undefined) el.value = data[id];
+  });
+
+  // Sincronizar cl_ fields desde data
+  if (data.nombre_pac) { const e = document.getElementById('cl_paciente'); if(e) e.value = data.nombre_pac; }
+  if (data.hc)         { const e = document.getElementById('cl_hc');       if(e) e.value = data.hc; }
+  if (data.propietario){ const e = document.getElementById('cl_familia');   if(e) e.value = data.propietario; }
+  if (data.proc1)      { const e = document.getElementById('cl_proc');      if(e) e.value = data.proc1; }
+
+  // Score corporal y ASA
+  if (data.score_corporal) {
+    const btn = document.querySelector(`.score-btn[onclick*="setScore(${data.score_corporal}"]`);
+    if (btn) setScore(parseInt(data.score_corporal), btn);
+  }
+  if (data.asa) {
+    const btn = document.querySelector(`.asa-btn[onclick*="setAsa('${data.asa}'"]`);
+    if (btn) setAsa(data.asa, btn);
+  }
+
+  showToast('📋 Datos del borrador cargados — revisá y completá lo que falta');
+}
+
+// Autoguardar cada 30 segundos
+setInterval(autoguardarBorrador, 30000);
+
+// Al finalizar o guardar exitosamente, limpiar borrador
+const _origFinalizar = window.finalizarFicha;
+window.finalizarFicha = async function() {
+  await _origFinalizar();
+  limpiarBorrador();
+};
+
+// Verificar borrador al cargar la página
+setTimeout(recuperarBorrador, 800);
 
 // ================================================================
 //  PROTECCIÓN CONTRA PÉRDIDA DE DATOS (recarga / cierre accidental)
