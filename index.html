@@ -3395,12 +3395,14 @@ function autoguardarBorrador() {
   const pac = document.getElementById('cl_paciente')?.value || document.getElementById('nombre_pac')?.value || '';
   const hc  = document.getElementById('cl_hc')?.value || document.getElementById('hc')?.value || '';
   if (!pac && !hc) return;
-  if (_fichaActualId) return; // ya fue guardada en Firebase, no hace falta borrador
+  // OJO: seguimos guardando el borrador aunque la ficha ya se haya guardado una vez
+  // (_fichaActualId seteado). Mientras no esté FINALIZADA, sigue siendo rescatable.
 
   try {
     const data = recopilarDatos();
     data._draft = true;
     data._draftTs = new Date().toISOString();
+    if (_fichaActualId) data._fichaActualId = _fichaActualId; // para continuar el mismo registro, no duplicar
     localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
   } catch(e) {}
 }
@@ -3428,6 +3430,7 @@ function recuperarBorrador() {
     }).then(ok => {
       if (!ok) { limpiarBorrador(); return; }
       cargarDatosEnFormulario(data);
+      if (data._fichaActualId) _fichaActualId = data._fichaActualId; // continúa el mismo registro, no duplica
       showToast('✅ Borrador recuperado');
     });
   } catch(e) {}
@@ -3465,7 +3468,76 @@ function cargarDatosEnFormulario(data) {
     if (btn) setAsa(data.asa, btn);
   }
 
-  showToast('📋 Datos del borrador cargados — revisá y completá lo que falta');
+  // Radios (est_mental, riesgo, anest_prev, conciencia)
+  ['est_mental','riesgo','anest_prev','conciencia'].forEach(name => {
+    if (!data[name]) return;
+    const el = document.querySelector(`input[name="${name}"][value="${CSS.escape(data[name])}"]`);
+    if (el) el.checked = true;
+  });
+
+  // Complicaciones (checkboxes)
+  const cIds = ['c_ninguna','c_arritmia','c_intub','c_taquicardia','c_vomito','c_bradicardia',
+    'c_hipertermia','c_hipotermia','c_htn','c_hipercapnia','c_hipotension','c_desat','c_muerte','c_eutanasia','c_otros'];
+  const cNames = ['Ninguna','Arritmias','Intubación dificultosa','Taquicardia','Vómitos','Bradicardia',
+    'Hipertermia','Hipotermia','Hipertensión','Hipercapnia','Hipotensión','Desaturación','Muerte','Eutanasia','Otros'];
+  if (data.complicaciones) {
+    const activas = data.complicaciones.split(',').map(s => s.trim());
+    cIds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (el && activas.includes(cNames[i])) el.checked = true;
+    });
+  }
+
+  // Restaurar tabla de Monitoreo (base + extras + PAI + TIVA) — el bloque que más se pierde
+  try { restaurarMonitor(data); } catch(e) { console.warn('Error restaurando monitoreo:', e); }
+
+  showToast('📋 Datos del borrador cargados — revisá y completá lo que falta (drogas y bloqueos regionales hay que revisarlos manualmente)');
+}
+
+// Reconstruye la tabla de Monitoreo (parámetros base, extras activados, PAI y drogas TIVA)
+// a partir de un objeto `data` generado por recopilarDatos().
+function restaurarMonitor(data) {
+  // 1. Tipo de mantenimiento primero (define opciones del selector de agente)
+  if (data.tipo_tiva !== undefined) { const e = document.getElementById('tipo_tiva'); if (e) e.value = data.tipo_tiva; }
+  if (data.tipo_inh  !== undefined) { const e = document.getElementById('tipo_inh');  if (e) e.value = data.tipo_inh;  }
+  buildMonitorTable(); // reconstruye filas base + fila "agregar droga TIVA" si corresponde
+
+  function tieneDatos(str) { return !!(str && str.replace(/\|/g,'').trim() !== ''); }
+
+  // 2. Reactivar parámetros extra que tengan valores guardados
+  PARAMS_EXTRA.forEach(p => {
+    if (p.type === 'group') {
+      if ((p.ids||[]).some(subId => tieneDatos(data[subId]))) addExtraRow(p);
+    } else if (tieneDatos(data[p.id])) {
+      addExtraRow(p);
+    }
+  });
+
+  // 3. Recrear filas de drogas TIVA
+  let tivaRows = [];
+  try { tivaRows = JSON.parse(data.mon_tiva_rows || '[]'); } catch(e) {}
+  tivaRows.forEach(r => { if (r.label) addTivaDrugRow(r.label); });
+
+  // 4. Volcar los valores guardados (string separado por "|") en cada celda
+  function volcarFila(paramId, valoresStr) {
+    if (!valoresStr) return;
+    valoresStr.split('|').forEach((v, i) => {
+      const el = document.getElementById(`${paramId}_${i}`);
+      if (el && v !== '') el.value = v;
+    });
+  }
+  [...PARAMS_BASE, ...PARAMS_EXTRA].forEach(p => {
+    if (p.type === 'group') (p.ids||[]).forEach(subId => volcarFila(subId, data[subId]));
+    else volcarFila(p.id, data[p.id]);
+  });
+  if (data.mon_agen_label) { const e = document.getElementById('mon_agen_label'); if (e) e.value = data.mon_agen_label; }
+  tivaRows.forEach(r => {
+    const rowId = 'row-tiva-' + (r.label||'').replace(/[^a-z]/gi,'');
+    volcarFila(rowId, r.valores);
+  });
+
+  renderPausaCol();
+  onMonitorInput(); // dispara actualización de gráficos con los datos recuperados
 }
 
 // Autoguardar cada 30 segundos
@@ -3641,7 +3713,7 @@ window.guardarYEnviar = async function() {
       showToast('💾 Sin conexión — guardado localmente');
       resetBtn('btn-guardar', '💾 Guardar');
       _formDirty = false;
-      limpiarBorrador();
+      // No limpiamos el borrador: la ficha no está finalizada, debe seguir siendo rescatable
       return;
     }
 
@@ -3680,7 +3752,7 @@ window.guardarYEnviar = async function() {
     }).catch(() => {});
 
     showToast('💾 Guardado — podés seguir cargando');
-    limpiarBorrador();
+    // No limpiamos el borrador: la ficha no está finalizada, debe seguir siendo rescatable
     _formDirty = false;
 
   } catch(e) {
