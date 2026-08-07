@@ -3,8 +3,8 @@
 //  Estrategia: Cache-first para assets, Network-first para datos
 // ============================================================
 
-const CACHE_NAME = 'anestesia-vet-v3';
-const CACHE_STATIC = 'anestesia-vet-static-v3';
+const CACHE_NAME = 'anestesia-vet-v4';
+const CACHE_STATIC = 'anestesia-vet-static-v4';
 
 // Assets que se cachean en la instalación
 const STATIC_ASSETS = [
@@ -65,7 +65,26 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Assets estáticos → Cache-first, luego red
+  // HTML (navegación / index.html) → Network-first, para que los fixes
+  // lleguen apenas se abre la app, con fallback a caché si no hay internet.
+  const esHTML = event.request.mode === 'navigate' ||
+                 url.pathname.endsWith('/') ||
+                 url.pathname.endsWith('index.html');
+
+  if (esHTML) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_STATIC).then(cache => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(event.request).then(c => c || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Otros assets estáticos (JS de librerías, fuentes) → Cache-first, luego red
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
