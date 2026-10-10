@@ -16,9 +16,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
   const firebaseConfig = {
     apiKey: "AIzaSyB8ueEQsn7AaVuGpyr871lPOOcKD0vp5Hw",
     authDomain: "anestesia-vet.firebaseapp.com",
@@ -28,42 +25,83 @@
     appId: "1:1004040230160:web:3e18eff4028d0eb5950195"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  let _fbIniciando = null;
 
-  window._fbSaveFicha = async function(data) {
-    try {
-      const docRef = await addDoc(collection(db, 'fichas'), data);
-      return docRef.id;
-    } catch(e) {
-      console.error('Firebase error:', e);
-      return null;
-    }
-  };
+  // Firebase se carga de forma dinámica: si la app arrancó SIN internet, se reintenta
+  // sola cuando vuelve la conexión (antes quedaba muerta hasta recargar la página).
+  function iniciarFirebase() {
+    if (window._fbReady) return Promise.resolve(true);
+    if (_fbIniciando) return _fbIniciando;
+    _fbIniciando = (async () => {
+      try {
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+        const { getFirestore, collection, addDoc, getDocs, query, orderBy, doc, setDoc } =
+          await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
 
-  window._fbGetFichas = async function() {
-    try {
-      const q = query(collection(db, 'fichas'), orderBy('_timestamp', 'desc'));
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ _fbId: d.id, ...d.data() }));
-    } catch(e) {
-      console.error('Firebase error:', e);
-      return [];
-    }
-  };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-  window._fbUpdateFicha = async function(id, data) {
-    try {
-      await setDoc(doc(db, 'fichas', id), data, { merge: true });
-      return true;
-    } catch(e) {
-      console.error('Firebase update error:', e);
-      return false;
-    }
-  };
+        window._fbSaveFicha = async function(data) {
+          try {
+            const docRef = await addDoc(collection(db, 'fichas'), data);
+            return docRef.id;
+          } catch(e) {
+            console.error('Firebase error:', e);
+            return null;
+          }
+        };
 
-  window._fbReady = true;
-  document.dispatchEvent(new Event('fb-ready'));
+        window._fbGetFichas = async function() {
+          try {
+            const q = query(collection(db, 'fichas'), orderBy('_timestamp', 'desc'));
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ _fbId: d.id, ...d.data() }));
+          } catch(e) {
+            console.error('Firebase error:', e);
+            return [];
+          }
+        };
+
+        window._fbUpdateFicha = async function(id, data) {
+          try {
+            await setDoc(doc(db, 'fichas', id), data, { merge: true });
+            return true;
+          } catch(e) {
+            console.error('Firebase update error:', e);
+            return false;
+          }
+        };
+
+        // Guardado idempotente: el ID lo genera el cliente, así reintentar nunca duplica la ficha.
+        // Devuelve { ok, error } para poder avisar al usuario si Firebase rechaza (p. ej. permisos).
+        window._fbSetFicha = async function(id, data) {
+          try {
+            await setDoc(doc(db, 'fichas', String(id)), data, { merge: true });
+            window._fbLastError = '';
+            return { ok: true };
+          } catch(e) {
+            console.error('Firebase set error:', e);
+            window._fbLastError = (e && (e.code || e.message)) || 'error';
+            return { ok: false, error: window._fbLastError };
+          }
+        };
+
+        window._fbReady = true;
+        document.dispatchEvent(new Event('fb-ready'));
+        return true;
+      } catch(e) {
+        console.warn('[Firebase] no se pudo iniciar (se reintenta al volver la conexión):', e && e.message);
+        return false;
+      } finally {
+        _fbIniciando = null;
+      }
+    })();
+    return _fbIniciando;
+  }
+
+  window._fbIniciar = iniciarFirebase;
+  window.addEventListener('online', iniciarFirebase);
+  iniciarFirebase();
 </script>
 <style>
 :root {
@@ -1357,6 +1395,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <div style="background:var(--navy);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
       <span style="font-size:14px;font-weight:600">📋 Ficha Anestésica</span>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="btn-reabrir-modal" onclick="reabrirFicha()" style="display:none;background:#e8a020;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">🔓 Reabrir</button>
         <button id="btn-continuar-modal" onclick="continuarCargandoFicha()" style="display:none;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">✏️ Continuar cargando</button>
         <button onclick="generarPDF()" style="background:var(--teal);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">⬇️ PDF</button>
         <button onclick="cerrarModal()" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">✕ Cerrar</button>
@@ -1392,6 +1431,7 @@ hr.div{border:none;border-top:1.5px solid var(--border);margin:8px 0}
     <div class="confirm-modal-icon" id="cm-icon">❓</div>
     <div class="confirm-modal-title" id="cm-title">¿Confirmar?</div>
     <div class="confirm-modal-text" id="cm-text">¿Estás seguro?</div>
+    <input type="password" id="cm-input" inputmode="numeric" autocomplete="off" placeholder="Clave" style="display:none;width:70%;margin:0 auto 18px;text-align:center;font-size:20px;letter-spacing:6px;border:1.5px solid var(--border);border-radius:8px;padding:8px">
     <div class="confirm-modal-actions">
       <button class="cm-cancel" id="cm-cancel">Cancelar</button>
       <button class="cm-ok" id="cm-ok">Confirmar</button>
@@ -1466,6 +1506,10 @@ let _pausaCol = -1;
 let _pausaConfirmada = false;
 let scoreVal = null;
 let asaVal = null;
+let _fichaActualId = null;   // ID (string) de la ficha en edición: se mantiene para actualizar y no duplicar
+let _formDirty = false;
+let _esFinalizada = false;   // true si la ficha en pantalla ya fue finalizada
+let _syncPromise = null;     // sincronización en curso (evita corridas simultáneas)
 
 // ---- TABS ----
 function showTab(name, btn) {
@@ -1511,7 +1555,7 @@ function clUpdate() {
   document.getElementById('cl-pct').textContent = pct + '%';
   document.getElementById('cl-bar').style.width = pct + '%';
   const banner = document.getElementById('cl-ready-banner');
-  if (pct === 100) banner.classList.add('show'); else banner.classList.remove('show');
+  if (banner) { if (pct === 100) banner.classList.add('show'); else banner.classList.remove('show'); }
 }
 
 function clIsComplete() {
@@ -1547,6 +1591,7 @@ function clSync() {
 }
 
 function fillPausaFields() {
+  if (!document.getElementById('pausa_paciente')) return;
   const pac  = document.getElementById('cl_paciente') ? document.getElementById('cl_paciente').value : '';
   const hc   = document.getElementById('cl_hc') ? document.getElementById('cl_hc').value : '';
   const proc = document.getElementById('cl_proc') ? document.getElementById('cl_proc').value : '';
@@ -1992,9 +2037,11 @@ function addMpaIndRow(tbodyId) {
   // Dosis: número + unidad
   const td2 = document.createElement('td');
   const ni = document.createElement('input');
+  ni.className = 'dosis-num';
   ni.type = 'number'; ni.placeholder = 'N°'; ni.step = 'any';
   ni.style.cssText = 'width:46px;border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font);margin-right:3px';
   const us = document.createElement('select');
+  us.className = 'dosis-mpa-sel';
   us.style.cssText = 'border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font)';
   us.innerHTML = '<option value="">— unidad —</option>' +
     DOSIS_MPA_IND.map(o => '<option value="' + o + '">' + o + '</option>').join('');
@@ -2092,7 +2139,7 @@ function addBloqueoBlock() {
       </div>
     </div>
     <div class="row" style="margin-bottom:6px">
-      <div class="field full"><label>Abordaje</label><input type="text" placeholder="Abordaje" style="width:100%"></div>
+      <div class="field full"><label>Abordaje</label><input type="text" class="bloqueo-abordaje" placeholder="Abordaje" style="width:100%"></div>
     </div>
     <div class="tbl-wrap">
       <table class="drug-table"><thead><tr><th>Droga</th><th>Concentración / Dosis</th><th>Vol. total admin.</th><th>Hora</th><th></th></tr></thead>
@@ -2127,6 +2174,7 @@ function addLocRowTo(tbodyId) {
 
   const td2 = document.createElement('td');
   const cs = document.createElement('select');
+  cs.className = 'conc-select';
   cs.style.cssText = 'width:100%;border:1px solid var(--border);border-radius:5px;padding:4px;font-size:12px;font-family:var(--font)';
   cs.innerHTML = concOpts;
   const ci = document.createElement('input'); ci.type='text'; ci.className='otra-input'; ci.placeholder='Especificar...'; ci.style.display='none'; ci.style.marginTop='3px';
@@ -2166,7 +2214,7 @@ function leerBloqueos() {
     const sel = block.querySelector('select');
     const otraInp = block.querySelector('.bloqueo-otro-inp');
     const nombre = sel?.value === '__otro__' ? (otraInp?.value || 'Otro') : (sel?.value || '');
-    const abordaje = block.querySelectorAll('input[type=text]')[0]?.value || '';
+    const abordaje = block.querySelector('.bloqueo-abordaje')?.value || '';
     const tbody = block.querySelector('tbody');
     const drogas = tbody ? leerTablaDrogas(tbody.id) : '';
     result.push({ nombre, abordaje, drogas });
@@ -2289,7 +2337,6 @@ function toggleCriTimes(sel) {
 
 // Inicializar con una fila cada tabla
 ['mpa-body','ind-body'].forEach(id => addMpaIndRow(id));
-addLocRow();
 addIntraopRow();
 addMpaIndRow('antag-body');
 addFluidoRow();
@@ -2315,7 +2362,7 @@ function showToast(msg, isError) {
 
 // ---- MODAL DE CONFIRMACIÓN GENÉRICO ----
 // Uso: confirmDialog({ icon, title, text, okText, danger }).then(ok => { if (ok) {...} })
-function confirmDialog({ icon = '❓', title = '¿Confirmar?', text = '¿Estás seguro?', okText = 'Confirmar', cancelText = 'Cancelar', danger = false } = {}) {
+function confirmDialog({ icon = '❓', title = '¿Confirmar?', text = '¿Estás seguro?', okText = 'Confirmar', cancelText = 'Cancelar', danger = false, hideCancel = false, pedirClave = false } = {}) {
   return new Promise(resolve => {
     const modal  = document.getElementById('confirm-modal');
     const btnOk  = document.getElementById('cm-ok');
@@ -2327,8 +2374,13 @@ function confirmDialog({ icon = '❓', title = '¿Confirmar?', text = '¿Estás 
     btnOk.textContent     = okText;
     btnCancel.textContent = cancelText;
     btnOk.classList.toggle('danger', danger);
+    btnCancel.style.display = hideCancel ? 'none' : '';
+    const inpClave = document.getElementById('cm-input');
+    inpClave.style.display = pedirClave ? 'block' : 'none';
+    inpClave.value = '';
 
     modal.classList.add('show');
+    if (pedirClave) setTimeout(() => inpClave.focus(), 100);
 
     function cleanup(result) {
       modal.classList.remove('show');
@@ -2345,6 +2397,67 @@ function confirmDialog({ icon = '❓', title = '¿Confirmar?', text = '¿Estás 
 }
 
 // ---- RECOPILAR DATOS ----
+// tablas de drogas con desplegable
+function leerTablaDrogas(tbodyId) {
+  const rows = [];
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(tr => {
+    const celdas = tr.querySelectorAll('td');
+    if (!celdas.length) return;
+    const droga = getDrugValue(celdas[0]);
+    const resto = Array.from(celdas).slice(1, -1).map((td, i) => {
+      // Dosis MPA/Inducción (número + unidad)
+      const dosisMpaSel = td.querySelector('.dosis-mpa-sel');
+      if (dosisMpaSel) {
+        const dosisNum = td.querySelector('.dosis-num')?.value || '';
+        const otraInp = td.querySelector('.otra-input');
+        const unidad = dosisMpaSel.value === 'Otra...' ? (otraInp?.value || 'Otra') : dosisMpaSel.value;
+        return [dosisNum, unidad].filter(Boolean).join(' ');
+      }
+      // Concentración/dosis en loc-body
+      const concSel = td.querySelector('.conc-select');
+      if (concSel) {
+        const otraInp = td.querySelector('.otra-input');
+        if (concSel.value.startsWith('—')) return '';
+      return concSel.value === 'Otra...' ? (otraInp?.value || 'Otra') : concSel.value;
+      }
+      // Dosis intraop (número + unidad)
+      const dosisSel = td.querySelector('.dosis-intraop-sel');
+      if (dosisSel) {
+        const dosisNum = td.querySelector('.dosis-num')?.value || '';
+        const otraInp = td.querySelector('.otra-input');
+        const unidad = dosisSel.value === 'Otra...' ? (otraInp?.value || 'Otra') : dosisSel.value;
+        return [dosisNum, unidad].filter(Boolean).join(' ');
+      }
+      // Hora CRI (inicio + fin)
+      const criTimes = td.querySelector('.cri-times');
+      if (criTimes && criTimes.classList.contains('show')) {
+        const [ini, fin] = criTimes.querySelectorAll('input');
+        return `${ini.value||''}→${fin.value||''}`;
+      }
+      const inp = td.querySelector('input');
+      return inp ? inp.value : '';
+    });
+    if (droga) rows.push([droga, ...resto].join(' | '));
+  });
+  return rows.join(' // ');
+}
+
+function leerFluidos() {
+  const rows = [];
+  document.querySelectorAll('#fluidos-body tr').forEach(tr => {
+    const tds = tr.querySelectorAll('td');
+    if (tds.length < 3) return;
+    const sel = tds[0].querySelector('select');
+    const otra = tds[0].querySelector('input');
+    const tipo = sel ? (sel.value === 'Otra...' ? (otra?.value || 'Otra') : sel.value) : '';
+    const tasaN = tds[1].querySelector('input')?.value || '';
+    const tasaU = tds[1].querySelector('select')?.value || '';
+    const vol = tds[2].querySelector('input')?.value || '';
+    if (tipo || tasaN || vol) rows.push([tipo, [tasaN, tasaU].filter(Boolean).join(' '), vol ? vol + ' mL' : ''].join(' | '));
+  });
+  return rows.join(' // ');
+}
+
 function recopilarDatos() {
   const d = {};
   // campos simples
@@ -2405,53 +2518,12 @@ function recopilarDatos() {
   }
   d['asistencia_regional'] = asist.join(', ') || '';
 
-  // tablas de drogas con desplegable
-  function leerTablaDrogas(tbodyId) {
-    const rows = [];
-    document.querySelectorAll(`#${tbodyId} tr`).forEach(tr => {
-      const celdas = tr.querySelectorAll('td');
-      if (!celdas.length) return;
-      const droga = getDrugValue(celdas[0]);
-      const resto = Array.from(celdas).slice(1, -1).map((td, i) => {
-        // Dosis MPA/Inducción (número + unidad)
-        const dosisMpaSel = td.querySelector('.dosis-mpa-sel');
-        if (dosisMpaSel) {
-          const dosisNum = td.querySelector('.dosis-num')?.value || '';
-          const otraInp = td.querySelector('.otra-input');
-          const unidad = dosisMpaSel.value === 'Otra...' ? (otraInp?.value || 'Otra') : dosisMpaSel.value;
-          return [dosisNum, unidad].filter(Boolean).join(' ');
-        }
-        // Concentración/dosis en loc-body
-        const concSel = td.querySelector('.conc-select');
-        if (concSel) {
-          const otraInp = td.querySelector('.otra-input');
-          return concSel.value === 'Otra...' ? (otraInp?.value || 'Otra') : concSel.value;
-        }
-        // Dosis intraop (número + unidad)
-        const dosisSel = td.querySelector('.dosis-intraop-sel');
-        if (dosisSel) {
-          const dosisNum = td.querySelector('.dosis-num')?.value || '';
-          const otraInp = td.querySelector('.otra-input');
-          const unidad = dosisSel.value === 'Otra...' ? (otraInp?.value || 'Otra') : dosisSel.value;
-          return [dosisNum, unidad].filter(Boolean).join(' ');
-        }
-        // Hora CRI (inicio + fin)
-        const criTimes = td.querySelector('.cri-times');
-        if (criTimes && criTimes.classList.contains('show')) {
-          const [ini, fin] = criTimes.querySelectorAll('input');
-          return `${ini.value||''}→${fin.value||''}`;
-        }
-        const inp = td.querySelector('input');
-        return inp ? inp.value : '';
-      });
-      if (droga) rows.push([droga, ...resto].join(' | '));
-    });
-    return rows.join(' // ');
-  }
   d['antagonistas'] = leerTablaDrogas('antag-body');
   d['drogas_induccion']= leerTablaDrogas('ind-body');
   d['drogas_regional'] = bloqueos.map((b,i) => `[${i+1}] ${b.nombre}: ${b.drogas}`).filter(b => b.includes(':')).join(' || ');
   d['drogas_intraop']  = leerTablaDrogas('intraop-body');
+  d['drogas_mpa']      = leerTablaDrogas('mpa-body');
+  d['fluidos']         = leerFluidos();
 
   // complicaciones
   const complicaciones = [];
@@ -2505,6 +2577,21 @@ function recopilarDatos() {
   // Rescate analgésico (desde solapa dolor)
   d['rescate_analg'] = document.getElementById('rescate_analg')?.value ||
                        document.getElementById('rescate_analg_felino')?.value || '';
+  // Escala de dolor (respuestas + puntaje) y estado del checklist de verificación
+  (function() {
+    const esp = (d.especie || '').toLowerCase();
+    const tipo = esp === 'canino' ? 'canino' : (esp === 'felino' ? 'felino' : '');
+    if (!tipo) return;
+    const names = tipo === 'canino' ? ['dc_1','dc_2','dc_3','dc_4','dc_5','dc_6'] : ['fc_1','fc_2','fc_3','fc_4','fc_5'];
+    const resp = names.map(n => { const e = document.querySelector('input[name="' + n + '"]:checked'); return e ? e.value : ''; });
+    if (resp.some(v => v !== '')) {
+      d['dolor_resp'] = resp.join('|');
+      d['escala_dolor'] = tipo === 'canino' ? 'Glasgow CMPS-SF' : 'Feline Grimace Scale';
+      const num = (document.getElementById('dolor-num-' + tipo) || {}).textContent || '';
+      d['puntaje_dolor'] = num === '—' ? '' : num;
+    }
+  })();
+  d['checklist'] = Array.from(document.querySelectorAll('.cl-item input[type=checkbox]')).map(c => c.checked ? '1' : '0').join('');
   d['asa'] = asaVal || '';
   d['score_corporal'] = scoreVal || '';
   d['_timestamp'] = new Date().toISOString();
@@ -2666,16 +2753,7 @@ async function cargarArchivoFichas() {
   document.getElementById('archivo-empty').style.display = 'none';
   document.getElementById('archivo-lista').innerHTML = '';
 
-  let fichas = [];
-
-  // Intentar Firebase primero
-  if (window._fbReady) {
-    fichas = await window._fbGetFichas();
-  }
-  // Fallback a localStorage
-  if (!fichas.length) {
-    try { fichas = JSON.parse(localStorage.getItem('fichas_anest') || '[]').reverse(); } catch(e) {}
-  }
+  const fichas = await obtenerFichasUnificadas();
 
   _todasFichas = fichas;
   document.getElementById('archivo-loading').style.display = 'none';
@@ -2832,6 +2910,8 @@ function abrirFicha(f) {
   // Mostrar botón "Continuar cargando" solo si no está finalizada
   const btnCont = document.getElementById('btn-continuar-modal');
   if (btnCont) btnCont.style.display = f._finalizada ? 'none' : '';
+  const btnReab = document.getElementById('btn-reabrir-modal');
+  if (btnReab) btnReab.style.display = f._finalizada ? '' : 'none';
 
   document.getElementById('modal-ficha').style.display = 'block';
 }
@@ -2849,10 +2929,62 @@ function continuarCargandoFicha() {
     if (!ok) return;
     showTab('frente', document.querySelectorAll('.tab')[1]);
     cargarDatosEnFormulario(f);
-    _fichaActualId = f._fbId || f._localId || null;
+    _fichaActualId = (f._fbId || f._localId) ? String(f._fbId || f._localId) : null;
+    _esFinalizada = false;
     cerrarModal();
     showToast('✏️ Ficha cargada — podés seguir completando');
   });
+}
+
+const CLAVE_REAPERTURA = '1111';
+
+// Reabrir una ficha finalizada: confirmación + clave (evita reaperturas accidentales)
+async function reabrirFicha() {
+  if (!_fichaActual) return;
+  const f = _fichaActual;
+  const nombre = f.nombre_pac ? '"' + f.nombre_pac + '"' : 'esta ficha';
+  const ok = await confirmDialog({
+    icon: '🔓',
+    title: '¿Desea reabrir la ficha de ' + nombre + '?',
+    text: 'Dejará de estar finalizada y se abrirá para seguir cargando. Después hay que volver a finalizarla.',
+    okText: 'Sí, reabrir',
+    cancelText: 'Cancelar'
+  });
+  if (!ok) return;
+  const ok2 = await confirmDialog({
+    icon: '🔑',
+    title: 'Ingresá la clave',
+    text: 'Se necesita la clave para reabrir una ficha finalizada.',
+    okText: 'Confirmar',
+    cancelText: 'Cancelar',
+    pedirClave: true
+  });
+  if (!ok2) return;
+  const inp = document.getElementById('cm-input');
+  const clave = (inp.value || '').trim();
+  inp.value = '';
+  if (clave !== CLAVE_REAPERTURA) {
+    showToast('🔒 Clave incorrecta — la ficha sigue finalizada', true);
+    return;
+  }
+  try {
+    const id = String(f._fbId || f._localId || '');
+    _fichaActualId = id || null;
+    const ahora = new Date().toISOString();
+    const rec = { ...f, _finalizada: false, _reabierta: true, _fechaReapertura: ahora, _timestamp: ahora };
+    delete rec._fbId; delete rec._sync;
+    guardarLocal(rec);                       // queda como "no finalizada" también en la nube
+    sincronizarPendientes({ silencioso: true });
+  } catch(e) {
+    console.error('Error reabriendo:', e);
+    showToast('❌ No se pudo reabrir la ficha', true);
+    return;
+  }
+  showTab('frente', document.querySelectorAll('.tab')[1]);
+  cargarDatosEnFormulario(f);
+  _esFinalizada = false;
+  cerrarModal();
+  showToast('🔓 Ficha reabierta — podés seguir cargando');
 }
 
 function renderGraficosEnModal(f) {
@@ -3071,6 +3203,7 @@ async function limpiarForm() {
   document.getElementById('fecha').valueAsDate = new Date();
   _formDirty = false;
   _fichaActualId = null;
+  _esFinalizada = false;
   // Reset bloqueos
   const bloqueosList = document.getElementById('bloqueos-lista');
   if (bloqueosList) bloqueosList.innerHTML = '';
@@ -3241,7 +3374,7 @@ async function cargarEstadisticas() {
 
   // Intentar Firebase primero
   if (window._fbReady) {
-    fichas = await window._fbGetFichas();
+    fichas = await fbConTimeout(() => window._fbGetFichas()).catch(() => []);
     document.getElementById('stat-fuente').textContent =
       `📡 Datos desde Firebase — ${fichas.length} fichas totales`;
   } else {
@@ -3395,6 +3528,7 @@ function autoguardarBorrador() {
   const pac = document.getElementById('cl_paciente')?.value || document.getElementById('nombre_pac')?.value || '';
   const hc  = document.getElementById('cl_hc')?.value || document.getElementById('hc')?.value || '';
   if (!pac && !hc) return;
+  if (_esFinalizada) return; // ficha finalizada: no debe reaparecer como borrador
   // OJO: seguimos guardando el borrador aunque la ficha ya se haya guardado una vez
   // (_fichaActualId seteado). Mientras no esté FINALIZADA, sigue siendo rescatable.
 
@@ -3430,7 +3564,7 @@ function recuperarBorrador() {
     }).then(ok => {
       if (!ok) { limpiarBorrador(); return; }
       cargarDatosEnFormulario(data);
-      if (data._fichaActualId) _fichaActualId = data._fichaActualId; // continúa el mismo registro, no duplica
+      if (data._fichaActualId) _fichaActualId = String(data._fichaActualId); // continúa el mismo registro, no duplica
       showToast('✅ Borrador recuperado');
     });
   } catch(e) {}
@@ -3446,6 +3580,7 @@ function cargarDatosEnFormulario(data) {
     'patologias','abordaje_loc',
     'h_inicio_anest','h_inicio_cx','h_fin_cx','h_fin_anest',
     'fc_rec','fr_rec','spo2_rec','temp_rec','h_extubacion',
+    'radio_estudio','eco','tllc_rec','mm_rec','pulso_rec','pa_rec','pvc_rec','decubito_rec','firma_fecha',
     'comentarios','indicaciones_post','destino_post','firma_nombre'];
   camposSimples.forEach(id => {
     const el = document.getElementById(id);
@@ -3464,8 +3599,8 @@ function cargarDatosEnFormulario(data) {
     if (btn) setScore(parseInt(data.score_corporal), btn);
   }
   if (data.asa) {
-    const btn = document.querySelector(`.asa-btn[onclick*="setAsa('${data.asa}'"]`);
-    if (btn) setAsa(data.asa, btn);
+    const btn = document.querySelector(`.asa-btn[onclick*="setASA('${data.asa}'"]`);
+    if (btn) setASA(data.asa, btn);
   }
 
   // Radios (est_mental, riesgo, anest_prev, conciencia)
@@ -3491,7 +3626,9 @@ function cargarDatosEnFormulario(data) {
   // Restaurar tabla de Monitoreo (base + extras + PAI + TIVA) — el bloque que más se pierde
   try { restaurarMonitor(data); } catch(e) { console.warn('Error restaurando monitoreo:', e); }
 
-  showToast('📋 Datos del borrador cargados — revisá y completá lo que falta (drogas y bloqueos regionales hay que revisarlos manualmente)');
+  try { restaurarTablasYExtras(data); } catch(e) { console.warn('Error restaurando tablas:', e); }
+
+  showToast('📋 Ficha cargada — revisá y completá lo que falta');
 }
 
 // Reconstruye la tabla de Monitoreo (parámetros base, extras activados, PAI y drogas TIVA)
@@ -3500,6 +3637,9 @@ function restaurarMonitor(data) {
   // 1. Tipo de mantenimiento primero (define opciones del selector de agente)
   if (data.tipo_tiva !== undefined) { const e = document.getElementById('tipo_tiva'); if (e) e.value = data.tipo_tiva; }
   if (data.tipo_inh  !== undefined) { const e = document.getElementById('tipo_inh');  if (e) e.value = data.tipo_inh;  }
+  const _bT = document.getElementById('btn_tiva'), _bI = document.getElementById('btn_inh');
+  if (_bT) _bT.classList.toggle('active', data.tipo_tiva === '1');
+  if (_bI) _bI.classList.toggle('active', data.tipo_inh === '1');
   buildMonitorTable(); // reconstruye filas base + fila "agregar droga TIVA" si corresponde
 
   function tieneDatos(str) { return !!(str && str.replace(/\|/g,'').trim() !== ''); }
@@ -3540,15 +3680,216 @@ function restaurarMonitor(data) {
   onMonitorInput(); // dispara actualización de gráficos con los datos recuperados
 }
 
+// ---- RESTAURACIÓN DE TABLAS DE DROGAS, BLOQUEOS, CHECKLIST Y EXTRAS ----
+function parsearFilas(str) {
+  return String(str || '').split(' // ').filter(r => r.trim()).map(r => r.split(' | ').map(x => x.trim()));
+}
+
+// Selecciona `valor` en un <select>; si no está entre las opciones usa "Otra..." + texto libre
+function setSelectOCustom(sel, otraInp, valor) {
+  if (!sel || valor === '' || valor === undefined) return;
+  const opts = Array.from(sel.options).map(o => o.value);
+  if (opts.includes(valor)) { sel.value = valor; return; }
+  const otraVal = opts.find(v => v === '__otra__' || v === 'Otra...' || v === '__otro__');
+  if (otraVal) {
+    sel.value = otraVal;
+    if (otraInp) { otraInp.value = valor; otraInp.classList.add('visible'); otraInp.style.display = 'block'; }
+  }
+}
+
+function restaurarDroga(td, nombre) {
+  setSelectOCustom(td.querySelector('.drug-select'), td.querySelector('.otra-input'), nombre);
+}
+
+function restaurarDosis(td, str) {
+  const num = td.querySelector('input[type=number]');
+  const sel = td.querySelector('select');
+  const otra = td.querySelector('.otra-input');
+  const m = String(str || '').match(/^\s*(-?\d+(?:[.,]\d+)?)\s*(.*)$/);
+  const n = m ? m[1].replace(',', '.') : '';
+  const u = m ? m[2].trim() : String(str || '').trim();
+  if (num) num.value = n;
+  if (sel && u) setSelectOCustom(sel, otra, u);
+  return sel;
+}
+
+function restaurarFilasMpaInd(tbodyId, str) {
+  const filas = parsearFilas(str);
+  const tbody = document.getElementById(tbodyId);
+  if (!filas.length || !tbody) return;
+  tbody.innerHTML = '';
+  filas.forEach(f => {
+    addMpaIndRow(tbodyId);
+    const tds = tbody.lastElementChild.querySelectorAll('td');
+    restaurarDroga(tds[0], f[0]);
+    restaurarDosis(tds[1], f[1]);
+    const via = tds[2].querySelector('input'); if (via) via.value = f[2] || '';
+    const hr = tds[3].querySelector('input'); if (hr) hr.value = f[3] || '';
+  });
+}
+
+function restaurarFilasIntraop(str) {
+  const filas = parsearFilas(str);
+  const tbody = document.getElementById('intraop-body');
+  if (!filas.length || !tbody) return;
+  tbody.innerHTML = '';
+  filas.forEach(f => {
+    addIntraopRow();
+    const tds = tbody.lastElementChild.querySelectorAll('td');
+    restaurarDroga(tds[0], f[0]);
+    const sel = restaurarDosis(tds[1], f[1]);
+    if (sel) toggleCriTimes(sel);
+    const via = tds[2].querySelector('input'); if (via) via.value = f[2] || '';
+    const h = f[3] || '';
+    if (h.includes('→')) {
+      const partes = h.split('→');
+      const ins = tds[3].querySelectorAll('.cri-times input');
+      if (ins[0]) ins[0].value = partes[0] || '';
+      if (ins[1]) ins[1].value = partes[1] || '';
+    } else {
+      const hs = tds[3].querySelector('.hora-simple'); if (hs) hs.value = h;
+    }
+  });
+}
+
+function restaurarFluidos(str) {
+  const filas = parsearFilas(str);
+  const tbody = document.getElementById('fluidos-body');
+  if (!filas.length || !tbody) return;
+  tbody.innerHTML = '';
+  filas.forEach(f => {
+    addFluidoRow();
+    const tds = tbody.lastElementChild.querySelectorAll('td');
+    setSelectOCustom(tds[0].querySelector('select'), tds[0].querySelector('input'), f[0]);
+    restaurarDosis(tds[1], f[1]);
+    const vol = tds[2].querySelector('input');
+    if (vol) vol.value = String(f[2] || '').replace(/\s*mL$/i, '');
+  });
+}
+
+function restaurarBloqueos(jsonStr) {
+  let arr = [];
+  try { arr = JSON.parse(jsonStr || '[]'); } catch(e) { return; }
+  if (!arr.length) return;
+  const cont = document.getElementById('bloqueos-lista');
+  cont.innerHTML = '';
+  _bloqueoCount = 0;
+  arr.forEach(b => {
+    addBloqueoBlock();
+    const block = cont.lastElementChild;
+    const sel = block.querySelector('select');
+    const otro = block.querySelector('.bloqueo-otro-inp');
+    if (sel && b.nombre) {
+      if (Array.from(sel.options).some(o => o.value === b.nombre)) sel.value = b.nombre;
+      else { sel.value = '__otro__'; if (otro) { otro.value = b.nombre; otro.style.display = ''; } }
+    }
+    const ab = block.querySelector('.bloqueo-abordaje'); if (ab) ab.value = b.abordaje || '';
+    const filas = parsearFilas(b.drogas);
+    if (filas.length) {
+      const tbody = block.querySelector('tbody');
+      tbody.innerHTML = '';
+      filas.forEach(f => {
+        addLocRowTo(tbody.id);
+        const tds = tbody.lastElementChild.querySelectorAll('td');
+        restaurarDroga(tds[0], f[0]);
+        setSelectOCustom(tds[1].querySelector('select'), tds[1].querySelector('input'), f[1]);
+        const vol = tds[2].querySelector('input'); if (vol) vol.value = f[2] || '';
+        const hr = tds[3].querySelector('input'); if (hr) hr.value = f[3] || '';
+      });
+    }
+  });
+}
+
+function restaurarChecklist(str) {
+  if (!str) return;
+  Array.from(document.querySelectorAll('.cl-item input[type=checkbox]')).forEach((cb, i) => { cb.checked = str[i] === '1'; });
+  clUpdate();
+}
+
+function restaurarTablasYExtras(data) {
+  // Procedimientos (principal + adicionales)
+  const procs = String(data.procedimientos || data.proc1 || '').split(' / ').map(x => x.trim()).filter(Boolean);
+  if (procs.length) {
+    const p1 = document.getElementById('proc1'); if (p1) p1.value = procs[0];
+    document.querySelectorAll('#proc-list .proc-item:not(:first-child)').forEach(el => el.remove());
+    const list = document.getElementById('proc-list');
+    procs.slice(1).forEach(pr => {
+      const div = document.createElement('div');
+      div.className = 'proc-item';
+      div.style.cssText = 'display:flex;gap:6px;margin-bottom:5px';
+      const inp = document.createElement('input'); inp.type = 'text'; inp.style.flex = '1'; inp.value = pr;
+      const del = document.createElement('button'); del.type = 'button'; del.textContent = '×';
+      del.style.cssText = 'background:#e8ecf0;color:var(--navy);border:none;border-radius:6px;padding:6px 10px;font-size:16px;cursor:pointer;flex-shrink:0';
+      del.addEventListener('click', () => div.remove());
+      div.appendChild(inp); div.appendChild(del); list.appendChild(div);
+    });
+  }
+
+  // Campos espejo de la pestaña Verificación + checklist
+  ['edad','peso','raza','especie','sexo'].forEach(k => {
+    const e = document.getElementById('cl_' + k);
+    if (e && data[k] !== undefined) e.value = data[k];
+  });
+  refreshDolorTab(data.especie || '');
+  restaurarChecklist(data.checklist);
+
+  // Escala de dolor
+  const esp = String(data.especie || '').toLowerCase();
+  const tipo = esp === 'canino' ? 'canino' : (esp === 'felino' ? 'felino' : '');
+  if (tipo && data.dolor_resp) {
+    const names = tipo === 'canino' ? ['dc_1','dc_2','dc_3','dc_4','dc_5','dc_6'] : ['fc_1','fc_2','fc_3','fc_4','fc_5'];
+    String(data.dolor_resp).split('|').forEach((v, i) => {
+      if (v === '' || !names[i]) return;
+      const el = document.querySelector('input[name="' + names[i] + '"][value="' + v + '"]');
+      if (el) el.checked = true;
+    });
+    calcDolor(tipo);
+  }
+  if (data.rescate_analg) {
+    const r = document.getElementById(tipo === 'felino' ? 'rescate_analg_felino' : 'rescate_analg');
+    if (r) r.value = data.rescate_analg;
+  }
+
+  // Anestesia regional: técnica, asistencia y neuroeje
+  const tecn = String(data.bloqueo_regional || '').split(',').map(x => x.trim());
+  ['blq_local','blq_perineural','blq_interfacial','blq_espinal','blq_epidural'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.checked = tecn.includes(e.value);
+  });
+  const asist = String(data.asistencia_regional || '').split(',').map(x => x.trim()).filter(Boolean);
+  const fijas = { blq_eco: 'Ultrasonografía', blq_estim: 'Estimulador de nervios periféricos', blq_anatomicas: 'Referencias anatómicas' };
+  Object.keys(fijas).forEach(id => { const e = document.getElementById(id); if (e) e.checked = asist.includes(fijas[id]); });
+  const otras = asist.filter(x => !Object.values(fijas).includes(x));
+  const oc = document.getElementById('blq_otra_asist');
+  if (oc) {
+    oc.checked = otras.length > 0;
+    toggleAsistOtra(oc);
+    if (otras.length) document.getElementById('blq_otra_asist_txt').value = otras.join(', ');
+  }
+  const ns = document.getElementById('abordaje_neuroeje');
+  if (ns && data.abordaje_neuroeje) {
+    if (Array.from(ns.options).some(o => o.value === data.abordaje_neuroeje)) ns.value = data.abordaje_neuroeje;
+    else {
+      ns.value = '__otro__';
+      const no = document.getElementById('abordaje_neuroeje_otro');
+      if (no) { no.style.display = ''; no.value = data.abordaje_neuroeje; }
+    }
+  }
+  const lo = document.getElementById('loc_occipito'); if (lo && data.loc_occipito !== undefined) lo.value = data.loc_occipito;
+  toggleNeuroeje();
+
+  // Tablas de drogas, bloqueos y fluidos
+  restaurarBloqueos(data.bloqueos_json);
+  restaurarFilasMpaInd('mpa-body', data.drogas_mpa);
+  restaurarFilasMpaInd('ind-body', data.drogas_induccion);
+  restaurarFilasMpaInd('antag-body', data.antagonistas);
+  restaurarFilasIntraop(data.drogas_intraop);
+  restaurarFluidos(data.fluidos);
+}
+
 // Autoguardar cada 30 segundos
 setInterval(autoguardarBorrador, 30000);
 
-// Al finalizar o guardar exitosamente, limpiar borrador
-const _origFinalizar = window.finalizarFicha;
-window.finalizarFicha = async function() {
-  await _origFinalizar();
-  limpiarBorrador();
-};
+// (el borrador se limpia dentro de finalizarFicha, ver más abajo)
 
 // Verificar borrador al cargar la página
 setTimeout(recuperarBorrador, 800);
@@ -3556,8 +3897,6 @@ setTimeout(recuperarBorrador, 800);
 // ================================================================
 //  PROTECCIÓN CONTRA PÉRDIDA DE DATOS (recarga / cierre accidental)
 // ================================================================
-let _formDirty = false;
-
 // Marca el formulario como "con cambios sin guardar" ante cualquier
 // interacción del usuario en los campos de la ficha.
 document.addEventListener('input',  () => { _formDirty = true; });
@@ -3597,173 +3936,225 @@ function updateNetStatus() {
     label.textContent      = 'Sin conexión';
     status.style.background = 'rgba(192,57,43,.45)';
   }
+  refrescarIndicador();
 }
 
 window.addEventListener('online',  updateNetStatus);
 window.addEventListener('offline', updateNetStatus);
 updateNetStatus();
 
-// ---- COLA DE SINCRONIZACIÓN OFFLINE ----
-const PENDING_KEY = 'fichas_pendientes_sync';
+// ---- GUARDADO LOCAL-FIRST + COLA DE SINCRONIZACIÓN ----
+// Regla de oro: lo primero que ocurre SIEMPRE es guardar en el dispositivo (síncrono, no depende
+// de internet). Recién después se intenta subir a la nube, sin bloquear la pantalla.
+// Cada ficha tiene un ID generado en el dispositivo; subir la misma ficha dos veces la actualiza
+// (nunca la duplica).
 
-function getPendientes() {
-  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch(e) { return []; }
-}
-function setPendientes(arr) {
-  try { localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); } catch(e) {}
-}
-
-// Guardar en cola offline cuando no hay conexión
-function encolarFichaOffline(data) {
-  const pendientes = getPendientes();
-  const ficha = { ...data, _offlineId: Date.now(), _pendiente: true };
-  pendientes.push(ficha);
-  setPendientes(pendientes);
-  return ficha._offlineId;
+function nuevoIdFicha() {
+  return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-// Intentar sincronizar fichas pendientes
-async function sincronizarPendientes() {
-  const pendientes = getPendientes();
-  if (!pendientes.length) return;
+function leerLocales() {
+  try { return JSON.parse(localStorage.getItem('fichas_anest') || '[]'); } catch(e) { return []; }
+}
 
-  const dot   = document.getElementById('net-dot');
-  const label = document.getElementById('net-label');
-  if (dot) { dot.style.background = '#f39c12'; label.textContent = `Sincronizando ${pendientes.length}…`; }
+function escribirLocales(arr) {
+  localStorage.setItem('fichas_anest', JSON.stringify(arr));
+}
 
-  const exitosos = [];
-  for (const ficha of pendientes) {
-    try {
-      // Intentar Firebase
-      let fbOk = false;
-      if (window._fbReady) {
-        const id = await window._fbSaveFicha(ficha);
-        fbOk = !!id;
-      }
-      // Intentar Sheets
-      try {
-        await fetch(SHEETS_URL, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(ficha)
-        });
-      } catch(e) { /* no-cors puede fallar silenciosamente */ }
+function idDeRegistro(r) {
+  return String(r._fbId || r._localId || '');
+}
 
-      if (fbOk || window._fbReady) exitosos.push(ficha._offlineId);
-    } catch(e) {
-      console.warn('[Sync] Falló sincronización de ficha:', e);
+// Conserva solo las últimas 30 fichas finalizadas YA subidas (las pendientes nunca se borran)
+function podarLocales(arr) {
+  const sincr = arr.filter(r => r._sync === 'ok' && r._finalizada)
+                   .sort((a, b) => String(b._timestamp).localeCompare(String(a._timestamp)));
+  const borrar = new Set(sincr.slice(30).map(r => idDeRegistro(r)));
+  return borrar.size ? arr.filter(r => !borrar.has(idDeRegistro(r))) : arr;
+}
+
+function guardarLocal(data) {
+  if (!_fichaActualId) _fichaActualId = nuevoIdFicha();
+  const id = String(_fichaActualId);
+  const rec = { ...data, _localId: id, _sync: 'pending' };
+  let arr = leerLocales();
+  const idx = arr.findIndex(r => idDeRegistro(r) === id || String(r._localId) === id);
+  if (idx >= 0) arr[idx] = { ...arr[idx], ...rec }; else arr.push(rec);
+  try {
+    escribirLocales(arr);
+  } catch(e) {
+    // Memoria del navegador llena: descartar copias ya sincronizadas y reintentar
+    escribirLocales(arr.filter(r => r._sync !== 'ok' || idDeRegistro(r) === id));
+  }
+  return rec;
+}
+
+function estaSincronizada(id) {
+  return leerLocales().some(r => idDeRegistro(r) === String(id) && r._sync === 'ok');
+}
+
+function marcarSincronizada(id, ts) {
+  try {
+    let arr = leerLocales();
+    const r = arr.find(x => idDeRegistro(x) === id);
+    // Solo si no se guardó una versión más nueva mientras subía
+    if (r && r._timestamp === ts) {
+      r._sync = 'ok';
+      r._fbId = id;
+      escribirLocales(podarLocales(arr));
     }
-  }
-
-  if (exitosos.length) {
-    const restantes = pendientes.filter(f => !exitosos.includes(f._offlineId));
-    setPendientes(restantes);
-    showToast(`✅ ${exitosos.length} ficha(s) sincronizada(s)`);
-  }
-
-  updateNetStatus();
+  } catch(e) {}
 }
 
-// ID de la ficha actual en edición (para actualizar en lugar de duplicar)
-let _fichaActualId = null;
+function marcarSheets(id, ts) {
+  try {
+    const arr = leerLocales();
+    const r = arr.find(x => idDeRegistro(x) === id);
+    if (r) { r._sheetsTs = ts; escribirLocales(arr); }
+  } catch(e) {}
+}
 
-// Helper: Firebase con timeout de 8 segundos
-async function fbConTimeout(fn) {
+function contarPendientes() {
+  return leerLocales().filter(r => r._sync === 'pending').length;
+}
+
+function refrescarIndicador() {
+  const label = document.getElementById('net-label');
+  const dot = document.getElementById('net-dot');
+  if (!label || !dot) return;
+  const n = contarPendientes();
+  const online = navigator.onLine;
+  label.textContent = (online ? 'Online' : 'Sin conexión') + (n ? ' · ' + n + ' sin subir' : '');
+  dot.style.background = !online ? '#e74c3c' : (n ? '#f39c12' : '#2ecc71');
+}
+
+// Firebase con timeout: nunca deja la pantalla "pensando" más de 8 segundos
+function fbConTimeout(fn, ms) {
   return Promise.race([
-    fn(),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+    Promise.resolve().then(fn),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms || 8000))
   ]);
 }
 
-// Helper: resetear botón siempre
 function resetBtn(id, texto) {
   const btn = document.getElementById(id);
   if (btn) { btn.textContent = texto; btn.disabled = false; }
 }
 
-// GUARDAR — sin confirmación, actualiza si ya existe
+function textoFallo(m) {
+  m = String(m || '');
+  if (/permission/i.test(m)) return 'Firebase rechazó el guardado (permisos). Avisá al administrador.';
+  if (m === 'timeout') return 'la conexión está muy lenta.';
+  if (m === 'sin-conexion') return 'no hay conexión.';
+  return 'no se pudo subir en este momento.';
+}
+
+async function sincronizarUna(rec) {
+  const id = idDeRegistro(rec);
+  const payload = { ...rec };
+  ['_sync', '_localId', '_fbId', '_sheetsTs'].forEach(k => delete payload[k]);
+
+  if (!navigator.onLine) return { ok: false, motivo: 'sin-conexion' };
+
+  // Google Sheets (respaldo): una vez por versión de la ficha, sin bloquear
+  if (rec._sheetsTs !== rec._timestamp) {
+    fetch(SHEETS_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(() => marcarSheets(id, rec._timestamp)).catch(() => {});
+  }
+
+  if (!window._fbReady && window._fbIniciar) {
+    try { await fbConTimeout(() => window._fbIniciar()); } catch(e) {}
+  }
+  if (!window._fbReady) return { ok: false, motivo: 'firebase-no-disponible' };
+
+  try {
+    const res = await fbConTimeout(() => window._fbSetFicha(id, payload));
+    if (res && res.ok) return { ok: true };
+    return { ok: false, motivo: (res && res.error) || 'error' };
+  } catch(e) {
+    return { ok: false, motivo: 'timeout' };
+  }
+}
+
+// Sube todas las fichas pendientes (o solo una con opts.solo). Nunca lanza error.
+function sincronizarPendientes(opts) {
+  if (_syncPromise) return _syncPromise.then(() => sincronizarPendientes(opts));
+  const p = (async () => {
+    let n = 0, fallo = '';
+    try {
+      let pend = leerLocales().filter(r => r._sync === 'pending');
+      if (opts && opts.solo) pend = pend.filter(r => idDeRegistro(r) === String(opts.solo));
+      for (const rec of pend) {
+        const r = await sincronizarUna(rec);
+        if (r.ok) { marcarSincronizada(idDeRegistro(rec), rec._timestamp); n++; }
+        else { fallo = r.motivo; if (r.motivo === 'sin-conexion') break; }
+      }
+    } catch(e) { console.warn('[Sync]', e); }
+    if (n && !(opts && opts.silencioso)) showToast('☁️ ' + n + ' ficha(s) sincronizada(s)');
+    refrescarIndicador();
+    return { n, fallo };
+  })();
+  _syncPromise = p;
+  p.finally(() => { if (_syncPromise === p) _syncPromise = null; });
+  return p;
+}
+
+// Archivo / estadísticas: fichas de la nube + las que todavía no se subieron (o todo lo local si no hay nube)
+async function obtenerFichasUnificadas() {
+  let nube = [];
+  if (window._fbReady && navigator.onLine) {
+    try { nube = await fbConTimeout(() => window._fbGetFichas()); } catch(e) { nube = []; }
+  }
+  const mapa = new Map();
+  (nube || []).forEach(f => mapa.set(String(f._fbId), f));
+  leerLocales().forEach(l => {
+    const id = idDeRegistro(l);
+    if (l._sync === 'pending' || !(nube && nube.length)) mapa.set(id, l);
+  });
+  return Array.from(mapa.values())
+    .sort((a, b) => String(b._timestamp || '').localeCompare(String(a._timestamp || '')));
+}
+
+// GUARDAR (parcial): siempre local primero; sube a la nube si hay conexión
 window.guardarYEnviar = async function() {
   const btn = document.getElementById('btn-guardar');
   btn.textContent = '⏳ Guardando...';
   btn.disabled = true;
 
+  let rec;
   try {
     const data = recopilarDatos();
-    data._finalizada = false;
+    data._finalizada = _esFinalizada;
     data._timestamp = new Date().toISOString();
-
-    // 1. Guardar/actualizar en localStorage siempre
-    try {
-      let registros = JSON.parse(localStorage.getItem('fichas_anest') || '[]');
-      if (_fichaActualId) {
-        const idx = registros.findIndex(r => r._localId === _fichaActualId || r._fbId === _fichaActualId);
-        if (idx >= 0) registros[idx] = { ...registros[idx], ...data };
-        else registros.push({ ...data, _localId: _fichaActualId });
-      } else {
-        const localId = Date.now();
-        _fichaActualId = localId;
-        data._localId = localId;
-        registros.push(data);
-      }
-      localStorage.setItem('fichas_anest', JSON.stringify(registros));
-    } catch(e) {}
-
-    // 2. Sin conexión → encolar
-    if (!navigator.onLine) {
-      showToast('💾 Sin conexión — guardado localmente');
-      resetBtn('btn-guardar', '💾 Guardar');
-      _formDirty = false;
-      // No limpiamos el borrador: la ficha no está finalizada, debe seguir siendo rescatable
-      return;
-    }
-
-    // 3. Firebase con timeout
-    if (window._fbReady) {
-      try {
-        if (_fichaActualId && typeof _fichaActualId === 'string') {
-          await fbConTimeout(() => window._fbUpdateFicha(_fichaActualId, data));
-        } else {
-          const fbId = await fbConTimeout(() => window._fbSaveFicha(data));
-          if (fbId) {
-            _fichaActualId = fbId;
-            // Actualizar localStorage con fbId
-            try {
-              let registros = JSON.parse(localStorage.getItem('fichas_anest') || '[]');
-              const idx = registros.findIndex(r => r._localId === data._localId);
-              if (idx >= 0) registros[idx]._fbId = fbId;
-              localStorage.setItem('fichas_anest', JSON.stringify(registros));
-            } catch(e) {}
-          }
-        }
-      } catch(e) {
-        console.warn('Firebase timeout/error en guardar:', e.message);
-        showToast('💾 Guardado local OK (Firebase no disponible)', true);
-        resetBtn('btn-guardar', '💾 Guardar');
-        _formDirty = false;
-        return;
-      }
-    }
-
-    // 4. Google Sheets (sin bloquear — fire and forget)
-    fetch(SHEETS_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).catch(() => {});
-
-    showToast('💾 Guardado — podés seguir cargando');
-    // No limpiamos el borrador: la ficha no está finalizada, debe seguir siendo rescatable
-    _formDirty = false;
-
+    rec = guardarLocal(data);
   } catch(e) {
-    console.error('Error en guardar:', e);
-    showToast('❌ Error al guardar — intentá de nuevo', true);
-  } finally {
+    console.error('Error guardando en el dispositivo:', e);
     resetBtn('btn-guardar', '💾 Guardar');
+    showToast('❌ No se pudo guardar en el dispositivo (' + (e && e.message ? e.message : e) + ')', true);
+    return;
   }
+
+  const id = idDeRegistro(rec);
+  _formDirty = false;
+  autoguardarBorrador();                 // el borrador queda al día (no se borra hasta finalizar)
+  resetBtn('btn-guardar', '💾 Guardar'); // el botón NUNCA queda colgado
+  refrescarIndicador();
+
+  if (!navigator.onLine) {
+    showToast('💾 Guardado en el dispositivo — se subirá al volver la conexión');
+    return;
+  }
+  showToast('💾 Guardado en el dispositivo — subiendo…');
+  sincronizarPendientes({ solo: id, silencioso: true }).then(res => {
+    if (estaSincronizada(id)) showToast('☁️ Guardado y sincronizado — podés seguir cargando');
+    else showToast('💾 Guardado en el dispositivo. Falta subir: ' + textoFallo(res && res.fallo || window._fbLastError) + ' Se reintenta solo.', true);
+  });
 };
 
-// FINALIZAR — confirma y archiva
+// FINALIZAR: guarda, sube y muestra la leyenda de finalización
 window.finalizarFicha = async function() {
   const ok = await confirmDialog({
     icon: '✅',
@@ -3778,43 +4169,59 @@ window.finalizarFicha = async function() {
   btnF.textContent = '⏳ Finalizando...';
   btnF.disabled = true;
 
+  let rec;
   try {
     const data = recopilarDatos();
     data._finalizada = true;
     data._fechaFinalizacion = new Date().toISOString();
     data._timestamp = data._fechaFinalizacion;
-
-    if (window._fbReady) {
-      try {
-        if (_fichaActualId && typeof _fichaActualId === 'string') {
-          await fbConTimeout(() => window._fbUpdateFicha(_fichaActualId, data));
-        } else {
-          const fbId = await fbConTimeout(() => window._fbSaveFicha(data));
-          if (fbId) _fichaActualId = fbId;
-        }
-      } catch(e) {
-        console.warn('Firebase timeout en finalizar:', e.message);
-      }
-    }
-
-    fetch(SHEETS_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).catch(() => {});
-
-    showToast('✅ Ficha finalizada y archivada');
-    limpiarBorrador();
-    _formDirty = false;
-    _fichaActualId = null;
-
+    rec = guardarLocal(data);
   } catch(e) {
-    console.error('Error en finalizar:', e);
-    showToast('❌ Error al finalizar — intentá de nuevo', true);
-  } finally {
+    console.error('Error finalizando:', e);
     resetBtn('btn-finalizar', '✅ Finalizar');
+    showToast('❌ No se pudo finalizar: no se pudo guardar en el dispositivo. Reintentá.', true);
+    return;
+  }
+
+  const id = idDeRegistro(rec);
+  _esFinalizada = true;
+  _formDirty = false;
+  limpiarBorrador();   // ya está guardada localmente: el borrador ya no hace falta
+
+  let res = null;
+  try { res = await sincronizarPendientes({ solo: id, silencioso: true }); } catch(e) {}
+  const enNube = estaSincronizada(id);
+
+  resetBtn('btn-finalizar', '✅ Finalizar');
+  refrescarIndicador();
+
+  const nombre = rec.nombre_pac ? '"' + rec.nombre_pac + '"' : 'la ficha';
+  if (enNube) {
+    await confirmDialog({
+      icon: '✅',
+      title: 'Ficha finalizada correctamente',
+      text: 'La ficha de ' + nombre + ' se guardó y se subió al archivo. Para cargar otro paciente tocá "Nueva".',
+      okText: 'Entendido',
+      hideCancel: true
+    });
+  } else {
+    await confirmDialog({
+      icon: '✅',
+      title: 'Ficha finalizada correctamente',
+      text: 'La ficha de ' + nombre + ' quedó guardada en este dispositivo, pero todavía NO se subió al archivo: ' +
+            textoFallo(res && res.fallo || window._fbLastError) + ' Se subirá sola cuando se pueda. ' +
+            'No borres los datos del navegador hasta que el indicador de arriba no muestre fichas sin subir.',
+      okText: 'Entendido',
+      hideCancel: true
+    });
   }
 };
+
+// Reintentos automáticos: al iniciar Firebase, al volver a la app, y cada minuto
+document.addEventListener('fb-ready', () => { sincronizarPendientes(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizarPendientes(); });
+setInterval(() => { if (navigator.onLine) sincronizarPendientes(); }, 60000);
+setTimeout(() => { refrescarIndicador(); sincronizarPendientes(); }, 1500);
 
 // Escuchar mensajes del Service Worker (sync en background)
 if ('serviceWorker' in navigator) {
